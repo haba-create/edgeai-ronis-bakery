@@ -69,3 +69,8 @@ pids
 # Temporary folders
 tmp/
 temp/
+
+# Docker & Railway
+.env.production
+.env.test
+.railway
