@@ -73,4 +73,5 @@ temp/
 # Docker & Railway
 .env.production
 .env.test
+.env.docker
 .railway

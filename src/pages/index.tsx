@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import Dashboard from '@/components/Dashboard';
 import ChatInterface from '@/components/ChatInterface';
 import AppHeader from '@/components/AppHeader';
@@ -40,6 +41,27 @@ export default function Home() {
       </Head>
 
       <AppHeader />
+      
+      {/* New Multi-App Experience Banner */}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <span className="text-2xl">🎭</span>
+              <div>
+                <h3 className="font-semibold">Experience Roni's from Multiple Perspectives!</h3>
+                <p className="text-sm opacity-90">Try our new Customer, Supplier & Driver apps with realistic maps and AI assistants</p>
+              </div>
+            </div>
+            <Link 
+              href="/apps"
+              className="bg-white text-blue-600 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+            >
+              Try Multi-App Demo →
+            </Link>
+          </div>
+        </div>
+      </div>
       
       {/* Client Portal Navigation */}
       <div className="bg-white shadow">
