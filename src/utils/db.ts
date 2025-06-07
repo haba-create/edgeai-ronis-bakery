@@ -20,8 +20,40 @@ export async function initDatabase(): Promise<Database> {
   
   // Create tables if they don't exist
   await db.exec(`
+    -- Tenants table for multi-tenant support
+    CREATE TABLE IF NOT EXISTS tenants (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      slug TEXT UNIQUE NOT NULL,
+      type TEXT NOT NULL CHECK(type IN ('bakery', 'restaurant', 'cafe', 'enterprise', 'individual')),
+      subscription_plan TEXT NOT NULL CHECK(subscription_plan IN ('free', 'basic', 'premium', 'enterprise')),
+      subscription_status TEXT NOT NULL DEFAULT 'active' CHECK(subscription_status IN ('active', 'inactive', 'suspended', 'cancelled')),
+      subscription_start_date TEXT,
+      subscription_end_date TEXT,
+      max_users INTEGER DEFAULT 10,
+      max_products INTEGER DEFAULT 100,
+      max_orders_per_month INTEGER DEFAULT 1000,
+      settings TEXT, -- JSON field for tenant-specific settings
+      domain TEXT, -- Custom domain for white-label
+      logo_url TEXT,
+      primary_contact_email TEXT NOT NULL,
+      billing_email TEXT,
+      phone TEXT,
+      address TEXT,
+      city TEXT,
+      postcode TEXT,
+      country TEXT DEFAULT 'UK',
+      timezone TEXT DEFAULT 'Europe/London',
+      currency TEXT DEFAULT 'GBP',
+      is_active BOOLEAN DEFAULT 1,
+      trial_ends_at TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS products (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL,
       name TEXT NOT NULL,
       category TEXT NOT NULL,
       current_stock REAL NOT NULL,
@@ -42,6 +74,9 @@ export async function initDatabase(): Promise<Database> {
       kosher_certified BOOLEAN,
       storage_temp TEXT,
       shelf_life_days INTEGER,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id),
       FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
     );
     
@@ -56,17 +91,24 @@ export async function initDatabase(): Promise<Database> {
       address TEXT,
       kosher_certified BOOLEAN,
       delivery_schedule TEXT,
-      minimum_order REAL
+      minimum_order REAL,
+      is_global BOOLEAN DEFAULT 0, -- Global suppliers available to all tenants
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
     
     CREATE TABLE IF NOT EXISTS purchase_orders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL,
       order_date TEXT NOT NULL,
       supplier_id INTEGER NOT NULL,
       status TEXT NOT NULL,
       expected_delivery TEXT,
       total_cost REAL,
       notes TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id),
       FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
     );
     
@@ -82,10 +124,14 @@ export async function initDatabase(): Promise<Database> {
     
     CREATE TABLE IF NOT EXISTS consumption_records (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL,
       record_date TEXT NOT NULL,
       product_id INTEGER NOT NULL,
       quantity REAL NOT NULL,
       notes TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id),
       FOREIGN KEY (product_id) REFERENCES products(id)
     );
     
@@ -97,8 +143,10 @@ export async function initDatabase(): Promise<Database> {
       vehicle_registration TEXT,
       license_number TEXT,
       supplier_id INTEGER,
+      is_global BOOLEAN DEFAULT 0, -- Global drivers available to all tenants
       is_active BOOLEAN DEFAULT 1,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
     );
     
@@ -147,16 +195,21 @@ export async function initDatabase(): Promise<Database> {
     
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT UNIQUE NOT NULL,
+      tenant_id INTEGER NOT NULL,
+      email TEXT NOT NULL,
       password_hash TEXT NOT NULL,
       full_name TEXT NOT NULL,
       phone TEXT,
-      role TEXT NOT NULL CHECK(role IN ('client', 'supplier', 'driver', 'admin')),
+      role TEXT NOT NULL CHECK(role IN ('client', 'supplier', 'driver', 'admin', 'tenant_admin', 'tenant_manager')),
       supplier_id INTEGER,
+      is_global BOOLEAN DEFAULT 0, -- Global users (super admin, support)
       is_active BOOLEAN DEFAULT 1,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       last_login TEXT,
-      FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+      FOREIGN KEY (supplier_id) REFERENCES suppliers(id),
+      UNIQUE(tenant_id, email) -- Email must be unique within tenant
     );
     
     CREATE TABLE IF NOT EXISTS client_addresses (
@@ -176,8 +229,9 @@ export async function initDatabase(): Promise<Database> {
     
     CREATE TABLE IF NOT EXISTS client_orders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL,
       user_id INTEGER NOT NULL,
-      order_number TEXT UNIQUE NOT NULL,
+      order_number TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'pending',
       total_amount REAL NOT NULL,
       delivery_fee REAL DEFAULT 2.50,
@@ -191,8 +245,10 @@ export async function initDatabase(): Promise<Database> {
       feedback TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id),
       FOREIGN KEY (user_id) REFERENCES users(id),
-      FOREIGN KEY (delivery_address_id) REFERENCES client_addresses(id)
+      FOREIGN KEY (delivery_address_id) REFERENCES client_addresses(id),
+      UNIQUE(tenant_id, order_number) -- Order number must be unique within tenant
     );
     
     CREATE TABLE IF NOT EXISTS client_order_items (
@@ -458,6 +514,125 @@ export async function initDatabase(): Promise<Database> {
       FOREIGN KEY (product_id) REFERENCES products(id),
       UNIQUE(product_id, forecast_date, forecast_horizon_days)
     );
+
+    -- Junction tables for many-to-many relationships
+    CREATE TABLE IF NOT EXISTS tenant_suppliers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL,
+      supplier_id INTEGER NOT NULL,
+      is_active BOOLEAN DEFAULT 1,
+      preferred_supplier BOOLEAN DEFAULT 0,
+      contract_start_date TEXT,
+      contract_end_date TEXT,
+      payment_terms TEXT,
+      discount_percentage REAL DEFAULT 0,
+      minimum_order_override REAL,
+      custom_delivery_schedule TEXT,
+      notes TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+      FOREIGN KEY (supplier_id) REFERENCES suppliers(id),
+      UNIQUE(tenant_id, supplier_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS tenant_drivers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL,
+      driver_id INTEGER NOT NULL,
+      is_active BOOLEAN DEFAULT 1,
+      hourly_rate REAL,
+      commission_percentage REAL DEFAULT 0,
+      vehicle_assigned TEXT,
+      territory TEXT,
+      max_deliveries_per_day INTEGER DEFAULT 10,
+      notes TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+      FOREIGN KEY (driver_id) REFERENCES delivery_drivers(id),
+      UNIQUE(tenant_id, driver_id)
+    );
+
+    -- Tenant-specific analytics and performance tables
+    CREATE TABLE IF NOT EXISTS tenant_analytics (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      total_orders INTEGER DEFAULT 0,
+      total_revenue REAL DEFAULT 0,
+      total_customers INTEGER DEFAULT 0,
+      new_customers INTEGER DEFAULT 0,
+      average_order_value REAL DEFAULT 0,
+      delivery_completion_rate REAL DEFAULT 0,
+      customer_satisfaction_avg REAL DEFAULT 0,
+      peak_hour TEXT,
+      top_product_id INTEGER,
+      active_users INTEGER DEFAULT 0,
+      storage_used_gb REAL DEFAULT 0,
+      api_calls_count INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+      FOREIGN KEY (top_product_id) REFERENCES products(id),
+      UNIQUE(tenant_id, date)
+    );
+
+    CREATE TABLE IF NOT EXISTS tenant_subscriptions_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL,
+      old_plan TEXT,
+      new_plan TEXT NOT NULL,
+      old_status TEXT,
+      new_status TEXT NOT NULL,
+      change_reason TEXT,
+      effective_date TEXT NOT NULL,
+      changed_by_user_id INTEGER,
+      billing_amount REAL,
+      notes TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+      FOREIGN KEY (changed_by_user_id) REFERENCES users(id)
+    );
+
+    -- Performance indexes for multi-tenant queries
+    CREATE INDEX IF NOT EXISTS idx_products_tenant_id ON products(tenant_id);
+    CREATE INDEX IF NOT EXISTS idx_products_tenant_category ON products(tenant_id, category);
+    CREATE INDEX IF NOT EXISTS idx_purchase_orders_tenant_id ON purchase_orders(tenant_id);
+    CREATE INDEX IF NOT EXISTS idx_purchase_orders_tenant_status ON purchase_orders(tenant_id, status);
+    CREATE INDEX IF NOT EXISTS idx_client_orders_tenant_id ON client_orders(tenant_id);
+    CREATE INDEX IF NOT EXISTS idx_client_orders_tenant_status ON client_orders(tenant_id, status);
+    CREATE INDEX IF NOT EXISTS idx_client_orders_tenant_date ON client_orders(tenant_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_users_tenant_id ON users(tenant_id);
+    CREATE INDEX IF NOT EXISTS idx_users_tenant_email ON users(tenant_id, email);
+    CREATE INDEX IF NOT EXISTS idx_users_tenant_role ON users(tenant_id, role);
+    CREATE INDEX IF NOT EXISTS idx_consumption_records_tenant_id ON consumption_records(tenant_id);
+    CREATE INDEX IF NOT EXISTS idx_consumption_records_tenant_product ON consumption_records(tenant_id, product_id);
+    CREATE INDEX IF NOT EXISTS idx_tenant_suppliers_tenant_id ON tenant_suppliers(tenant_id);
+    CREATE INDEX IF NOT EXISTS idx_tenant_drivers_tenant_id ON tenant_drivers(tenant_id);
+    CREATE INDEX IF NOT EXISTS idx_tenant_analytics_tenant_date ON tenant_analytics(tenant_id, date);
+    CREATE INDEX IF NOT EXISTS idx_tenants_slug ON tenants(slug);
+    CREATE INDEX IF NOT EXISTS idx_tenants_status ON tenants(subscription_status);
+    CREATE INDEX IF NOT EXISTS idx_tenants_type ON tenants(type);
+
+    -- Tool usage audit table for agent interactions
+    CREATE TABLE IF NOT EXISTS tool_usage_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      tool_name TEXT NOT NULL,
+      parameters TEXT,
+      result TEXT,
+      execution_time_ms INTEGER,
+      success BOOLEAN DEFAULT 1,
+      error_message TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+    
+    CREATE INDEX IF NOT EXISTS idx_tool_usage_tenant_user ON tool_usage_logs(tenant_id, user_id);
+    CREATE INDEX IF NOT EXISTS idx_tool_usage_tool_name ON tool_usage_logs(tool_name);
+    CREATE INDEX IF NOT EXISTS idx_tool_usage_created_at ON tool_usage_logs(created_at);
   `);
   
   return db;

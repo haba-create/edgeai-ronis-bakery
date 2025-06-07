@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FiMessageSquare, FiSend, FiX, FiNavigation, FiPhone, FiMapPin } from 'react-icons/fi';
+import { useAuth } from '../../hooks/useAuth';
 
 interface Message {
   id: string;
@@ -10,14 +11,15 @@ interface Message {
 }
 
 export default function DriverChatbot() {
+  const { user, tenantId } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "Hi David! I'm your driving assistant. I can help with navigation, customer contact, reporting issues, or any questions. Safe driving! 🚗",
+      text: "Hi! I'm your Driver Assistant. I can help with deliveries, navigation, location updates, and earnings tracking. Ready to hit the road?",
       sender: 'bot',
       timestamp: new Date(),
-      suggestions: ['Get directions', 'Call customer', 'Report issue', 'Break time']
+      suggestions: ['My deliveries', 'Update location', 'Get navigation', 'Earnings summary']
     }
   ]);
   const [input, setInput] = useState('');
@@ -32,8 +34,19 @@ export default function DriverChatbot() {
     scrollToBottom();
   }, [messages]);
 
+  // Helper function to convert tenant slug to numeric ID
+  const getTenantNumericId = (tenantSlug: string): number => {
+    const tenantMapping: Record<string, number> = {
+      'rb-main': 1,
+      'rb-belsize': 2,
+      'hjb-supplier': 3,
+      'logistics-main': 4
+    };
+    return tenantMapping[tenantSlug] || 1; // Default to 1 if not found
+  };
+
   const handleSend = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || !user || !tenantId) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -43,80 +56,73 @@ export default function DriverChatbot() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = input;
     setInput('');
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const responses = getAIResponse(input);
-      const botMessage: Message = {
+    try {
+      // Call the agent API
+      const response = await fetch('/api/agent-chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: currentInput,
+          role: user.role,
+          tenantId: getTenantNumericId(tenantId),
+          userId: parseInt(user.id, 10)
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        const botMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: data.response,
+          sender: 'bot',
+          timestamp: new Date(),
+          suggestions: data.suggestions || getSuggestionsForRole(user.role)
+        };
+        setMessages(prev => [...prev, botMessage]);
+      } else {
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: data.error || 'Sorry, I encountered an error. Please try again.',
+          sender: 'bot',
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, errorMessage]);
+      }
+    } catch (error) {
+      console.error('Chat error:', error);
+      const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: responses.text,
+        text: 'Sorry, I\'m having trouble connecting. Please try again.',
         sender: 'bot',
-        timestamp: new Date(),
-        suggestions: responses.suggestions
+        timestamp: new Date()
       };
-      setMessages(prev => [...prev, botMessage]);
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
-  const getAIResponse = (query: string): { text: string; suggestions?: string[] } => {
-    const lowerQuery = query.toLowerCase();
-
-    if (lowerQuery.includes('direction') || lowerQuery.includes('navigate') || lowerQuery.includes('route')) {
-      return {
-        text: "🧭 Next directions to Heritage Jewish Breads:\n\n1. Continue straight for 0.2 miles\n2. Turn right onto Finchley Road\n3. In 0.5 miles, turn left onto Industrial Way\n4. Destination will be on your right\n\n📍 ETA: 8 minutes\n🚗 Current traffic: Light\n\nWould you like me to reroute due to traffic or call the customer?",
-        suggestions: ['Avoid traffic', 'Call customer', 'Alternative route', 'Voice navigation']
-      };
+  const getSuggestionsForRole = (role: string): string[] => {
+    switch (role) {
+      case 'client':
+        return ['Check inventory', 'Create order', 'View analytics', 'Recent orders', 'Low stock alerts'];
+      case 'supplier':
+        return ['Pending orders', 'Update order status', 'Assign driver', 'Performance metrics'];
+      case 'driver':
+        return ['My deliveries', 'Update location', 'Complete delivery', 'Earnings summary'];
+      case 'admin':
+      case 'tenant_admin':
+        return ['System status', 'Tenant overview', 'Create tenant', 'User management'];
+      default:
+        return ['My deliveries', 'Get navigation', 'Update location', 'Help'];
     }
-
-    if (lowerQuery.includes('customer') || lowerQuery.includes('call') || lowerQuery.includes('contact')) {
-      return {
-        text: "📞 Customer Contact for current delivery:\n\n👤 Heritage Jewish Breads\n📱 +44 20 7123 4567\n📧 orders@heritagebread.co.uk\n\n💬 Pre-written messages:\n• \"I'm 5 minutes away\"\n• \"I've arrived and am outside\"\n• \"Having trouble finding the address\"\n\nWould you like me to call them or send a message?",
-        suggestions: ['Call now', 'Send arrival message', 'Report issue', 'Get help']
-      };
-    }
-
-    if (lowerQuery.includes('issue') || lowerQuery.includes('problem') || lowerQuery.includes('help')) {
-      return {
-        text: "🆘 I can help with various issues:\n\n🚗 Vehicle problems\n📍 Navigation/GPS issues\n📦 Delivery complications\n👤 Customer concerns\n🛣️ Traffic/road issues\n\nWhat type of issue are you experiencing? I can connect you with the right support team or provide immediate assistance.",
-        suggestions: ['Vehicle problem', 'Customer issue', 'Navigation help', 'Emergency support']
-      };
-    }
-
-    if (lowerQuery.includes('break') || lowerQuery.includes('rest') || lowerQuery.includes('lunch')) {
-      return {
-        text: "⏰ Break Management:\n\nYou've been driving for 2.5 hours. UK law requires a 45-minute break after 4.5 hours of driving.\n\n📍 Nearby break spots:\n• Services: 0.3 miles ahead\n• Café: Belsize Park (2 min)\n• Parking: Primrose Hill (5 min)\n\n⚠️ Current delivery ETA: 15 minutes\nRecommendation: Complete current delivery, then take break.",
-        suggestions: ['Find parking', 'After delivery break', 'Emergency stop', 'Log break time']
-      };
-    }
-
-    if (lowerQuery.includes('traffic') || lowerQuery.includes('delay') || lowerQuery.includes('late')) {
-      return {
-        text: "🚦 Traffic Update:\n\nCurrent route: Light traffic ✅\nAlternative route available that saves 3 minutes\n\n🕐 If running late:\n• Auto-notify customer (ETA update)\n• Suggest reschedule if >30 min delay\n• Contact dispatch for support\n\nCurrent ETA is within acceptable range. No action needed unless you prefer the faster route.",
-        suggestions: ['Take faster route', 'Notify customer', 'Check alternatives', 'Contact dispatch']
-      };
-    }
-
-    if (lowerQuery.includes('complete') || lowerQuery.includes('delivered') || lowerQuery.includes('finished')) {
-      return {
-        text: "✅ Delivery Completion:\n\nNext steps after delivery:\n1. Mark delivery as complete in app\n2. Take photo proof (if required)\n3. Get customer signature/confirmation\n4. Rate customer interaction\n\n📱 Next delivery: Roni's Belsize Park (8 min drive)\n🎯 Today's progress: 12/14 deliveries complete\n\nGreat job! You're ahead of schedule today.",
-        suggestions: ['Next delivery', 'Take break', 'View earnings', 'Report feedback']
-      };
-    }
-
-    if (lowerQuery.includes('earn') || lowerQuery.includes('money') || lowerQuery.includes('pay')) {
-      return {
-        text: "💰 Today's Earnings:\n\n📊 Base pay: £95.50\n🎁 Tips: £28.00\n⚡ Peak bonuses: £22.00\n💵 Total: £145.50\n\n📈 This week: £734.50\n🎯 Weekly goal: £800 (82% complete)\n\nYou're having a great week! Just 2 more days to hit your goal.",
-        suggestions: ['Weekly summary', 'Set new goal', 'Track tips', 'Payment history']
-      };
-    }
-
-    return {
-      text: "I'm here to help with:\n\n🧭 Navigation and directions\n📞 Customer communication\n🚗 Vehicle or delivery issues\n⏰ Break time management\n💰 Earnings tracking\n\nWhat can I assist you with?",
-      suggestions: ['Get directions', 'Call customer', 'Take a break', 'Check earnings']
-    };
   };
 
   const handleSuggestionClick = (suggestion: string) => {
@@ -147,8 +153,13 @@ export default function DriverChatbot() {
                 🚗
               </div>
               <div>
-                <h3 className="font-semibold text-sm">Drive Assistant</h3>
-                <p className="text-xs opacity-90">Always here to help</p>
+                <h3 className="font-semibold text-sm">
+                  {user?.role === 'driver' ? 'Driver Assistant' : 
+                   user?.role === 'client' ? 'Bakery Assistant' :
+                   user?.role === 'supplier' ? 'Supplier Assistant' : 
+                   'Admin Assistant'}
+                </h3>
+                <p className="text-xs opacity-90">AI-powered {user?.role || 'assistant'}</p>
               </div>
             </div>
             <button
@@ -217,17 +228,26 @@ export default function DriverChatbot() {
           {/* Quick Actions */}
           <div className="border-t p-2">
             <div className="flex justify-around">
-              <button className="flex flex-col items-center p-2 hover:bg-gray-50 rounded">
+              <button 
+                onClick={() => handleSuggestionClick('Show my deliveries')}
+                className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
+              >
                 <FiNavigation className="text-gray-600" size={16} />
-                <span className="text-xs text-gray-600 mt-1">Nav</span>
+                <span className="text-xs text-gray-600 mt-1">Deliveries</span>
               </button>
-              <button className="flex flex-col items-center p-2 hover:bg-gray-50 rounded">
-                <FiPhone className="text-gray-600" size={16} />
-                <span className="text-xs text-gray-600 mt-1">Call</span>
-              </button>
-              <button className="flex flex-col items-center p-2 hover:bg-gray-50 rounded">
+              <button 
+                onClick={() => handleSuggestionClick('Update my current location')}
+                className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
+              >
                 <FiMapPin className="text-gray-600" size={16} />
-                <span className="text-xs text-gray-600 mt-1">Help</span>
+                <span className="text-xs text-gray-600 mt-1">Location</span>
+              </button>
+              <button 
+                onClick={() => handleSuggestionClick('Show earnings summary')}
+                className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
+              >
+                <FiPhone className="text-gray-600" size={16} />
+                <span className="text-xs text-gray-600 mt-1">Earnings</span>
               </button>
             </div>
           </div>

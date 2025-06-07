@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FiMessageSquare, FiSend, FiX, FiShoppingCart, FiMapPin, FiClock } from 'react-icons/fi';
+import { useAuth } from '../../hooks/useAuth';
 
 interface Message {
   id: string;
@@ -10,14 +11,15 @@ interface Message {
 }
 
 export default function ClientChatbot() {
+  const { user, tenantId } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "Hi! I'm Roni's Assistant. I can help you with orders, track deliveries, or find the perfect treat. What would you like today?",
+      text: "Hi! I'm your AI bakery assistant. I can help you with inventory management, ordering supplies, analytics, and more. What would you like to do today?",
       sender: 'bot',
       timestamp: new Date(),
-      suggestions: ['View menu', 'Track order', 'Store hours', 'Special offers']
+      suggestions: ['Check inventory', 'Create order', 'View analytics', 'Recent orders']
     }
   ]);
   const [input, setInput] = useState('');
@@ -32,8 +34,19 @@ export default function ClientChatbot() {
     scrollToBottom();
   }, [messages]);
 
+  // Helper function to convert tenant slug to numeric ID
+  const getTenantNumericId = (tenantSlug: string): number => {
+    const tenantMapping: Record<string, number> = {
+      'rb-main': 1,
+      'rb-belsize': 2,
+      'hjb-supplier': 3,
+      'logistics-main': 4
+    };
+    return tenantMapping[tenantSlug] || 1; // Default to 1 if not found
+  };
+
   const handleSend = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || !user || !tenantId) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -43,66 +56,73 @@ export default function ClientChatbot() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = input;
     setInput('');
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const responses = getAIResponse(input);
-      const botMessage: Message = {
+    try {
+      // Call the agent API
+      const response = await fetch('/api/agent-chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: currentInput,
+          role: user.role,
+          tenantId: getTenantNumericId(tenantId),
+          userId: parseInt(user.id, 10)
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        const botMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: data.response,
+          sender: 'bot',
+          timestamp: new Date(),
+          suggestions: data.suggestions || getSuggestionsForRole(user.role)
+        };
+        setMessages(prev => [...prev, botMessage]);
+      } else {
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: data.error || 'Sorry, I encountered an error. Please try again.',
+          sender: 'bot',
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, errorMessage]);
+      }
+    } catch (error) {
+      console.error('Chat error:', error);
+      const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: responses.text,
+        text: 'Sorry, I\'m having trouble connecting. Please try again.',
         sender: 'bot',
-        timestamp: new Date(),
-        suggestions: responses.suggestions
+        timestamp: new Date()
       };
-      setMessages(prev => [...prev, botMessage]);
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
-  const getAIResponse = (query: string): { text: string; suggestions?: string[] } => {
-    const lowerQuery = query.toLowerCase();
-
-    if (lowerQuery.includes('track') || lowerQuery.includes('order') || lowerQuery.includes('delivery')) {
-      return {
-        text: "I can see your order #12345 is being prepared! Your fresh sourdough bread and chocolate croissant will be ready in about 15 minutes. David M. will deliver it to you by 2:30 PM. You can track him live on the map!",
-        suggestions: ['View on map', 'Call driver', 'Change delivery address']
-      };
+  const getSuggestionsForRole = (role: string): string[] => {
+    switch (role) {
+      case 'client':
+        return ['Check inventory', 'Create order', 'View analytics', 'Recent orders', 'Low stock alerts'];
+      case 'supplier':
+        return ['Pending orders', 'Update order status', 'Assign driver', 'Performance metrics'];
+      case 'driver':
+        return ['My deliveries', 'Update location', 'Complete delivery', 'Earnings summary'];
+      case 'admin':
+      case 'tenant_admin':
+        return ['System status', 'Tenant overview', 'Create tenant', 'User management'];
+      default:
+        return ['Check inventory', 'Create order', 'View analytics', 'Help'];
     }
-
-    if (lowerQuery.includes('menu') || lowerQuery.includes('food') || lowerQuery.includes('what do you have')) {
-      return {
-        text: "Today's fresh items include:\n🍞 Sourdough Bread (£4.99)\n🥐 Chocolate Croissants (£3.50)\n🥯 Everything Bagels (£5.99)\n☕ Barista Coffee (from £3.99)\n\nOur most popular item today is the Avocado Toast with poached egg!",
-        suggestions: ['Order sourdough', 'View full menu', 'Dietary options', 'Today\'s specials']
-      };
-    }
-
-    if (lowerQuery.includes('hours') || lowerQuery.includes('open') || lowerQuery.includes('close')) {
-      return {
-        text: "We're open today from 7:00 AM to 8:00 PM. Perfect for breakfast, lunch, or an afternoon treat! Our busiest times are 8-9 AM and 12-1 PM, so ordering ahead through the app saves you time.",
-        suggestions: ['Order now', 'Set reminder', 'Find nearest store']
-      };
-    }
-
-    if (lowerQuery.includes('special') || lowerQuery.includes('offer') || lowerQuery.includes('deal')) {
-      return {
-        text: "Today's specials:\n🎉 Coffee & Croissant combo - £5.99 (save £1.50)\n🎉 Buy 2 bagels, get 20% off\n🎉 Free delivery on orders over £20\n\nYou're also just 3 orders away from a free coffee with our loyalty program!",
-        suggestions: ['Apply offer', 'View loyalty points', 'Share with friends']
-      };
-    }
-
-    if (lowerQuery.includes('allergen') || lowerQuery.includes('gluten') || lowerQuery.includes('vegan')) {
-      return {
-        text: "We take dietary requirements seriously! We have:\n🌱 Vegan options (marked with V)\n🌾 Gluten-free breads and pastries\n🥜 Nut-free items\n\nAll items show full allergen information. Would you like me to filter the menu for your dietary needs?",
-        suggestions: ['Vegan menu', 'Gluten-free options', 'View all allergens']
-      };
-    }
-
-    return {
-      text: "I'd be happy to help! You can ask me about our menu, track your order, check store hours, or find special offers. What would you like to know?",
-      suggestions: ['View menu', 'Track order', 'Store info', 'Help']
-    };
   };
 
   const handleSuggestionClick = (suggestion: string) => {
@@ -133,8 +153,13 @@ export default function ClientChatbot() {
                 🤖
               </div>
               <div>
-                <h3 className="font-semibold">Roni's Assistant</h3>
-                <p className="text-xs opacity-90">Always here to help</p>
+                <h3 className="font-semibold">
+                  {user?.role === 'client' ? 'Bakery Assistant' : 
+                   user?.role === 'supplier' ? 'Supplier Assistant' :
+                   user?.role === 'driver' ? 'Driver Assistant' : 
+                   'Admin Assistant'}
+                </h3>
+                <p className="text-xs opacity-90">AI-powered {user?.role || 'assistant'}</p>
               </div>
             </div>
             <button
@@ -203,17 +228,26 @@ export default function ClientChatbot() {
           {/* Quick Actions */}
           <div className="border-t p-2">
             <div className="flex justify-around">
-              <button className="flex flex-col items-center p-2 hover:bg-gray-50 rounded">
+              <button 
+                onClick={() => handleSuggestionClick('Check inventory status')}
+                className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
+              >
                 <FiShoppingCart className="text-gray-600" />
-                <span className="text-xs text-gray-600 mt-1">Menu</span>
+                <span className="text-xs text-gray-600 mt-1">Inventory</span>
               </button>
-              <button className="flex flex-col items-center p-2 hover:bg-gray-50 rounded">
+              <button 
+                onClick={() => handleSuggestionClick('Show recent orders')}
+                className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
+              >
                 <FiMapPin className="text-gray-600" />
-                <span className="text-xs text-gray-600 mt-1">Track</span>
+                <span className="text-xs text-gray-600 mt-1">Orders</span>
               </button>
-              <button className="flex flex-col items-center p-2 hover:bg-gray-50 rounded">
+              <button 
+                onClick={() => handleSuggestionClick('Show analytics')}
+                className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
+              >
                 <FiClock className="text-gray-600" />
-                <span className="text-xs text-gray-600 mt-1">Hours</span>
+                <span className="text-xs text-gray-600 mt-1">Analytics</span>
               </button>
             </div>
           </div>
