@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { seedDatabase } from '@/data/seedData';
+import { generateHistoricalData } from '@/data/historicalSeed';
 import { initDatabase } from '@/utils/db';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -11,7 +12,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Seed database with initial data
       await seedDatabase();
       
-      return res.status(200).json({ success: true, message: 'Database seeded successfully' });
+      // Generate historical data
+      await generateHistoricalData();
+      
+      return res.status(200).json({ success: true, message: 'Database seeded successfully with historical data' });
     }
     
     // Method not allowed
