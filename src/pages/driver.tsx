@@ -12,9 +12,7 @@ export default function DriverDashboard() {
         title="Driver Dashboard"
         description={`Welcome back, ${session?.user?.name || 'Driver'}! Manage your delivery routes.`}
       >
-        <div className="h-[calc(100vh-4rem)]">
-          <DriverApp />
-        </div>
+        <DriverApp />
       </DashboardLayout>
     </ProtectedRoute>
   );

@@ -107,7 +107,7 @@ export default function DriverApp() {
   };
 
   return (
-    <div className="h-screen bg-gray-50 flex flex-col max-w-sm mx-auto border-x border-gray-300 relative" style={{ 
+    <div className="bg-gray-50 flex flex-col max-w-sm mx-auto border-x border-gray-300 relative min-h-full" style={{ 
       paddingBottom: 'env(safe-area-inset-bottom)',
       minHeight: '667px', // iPhone SE height
       maxHeight: '896px', // iPhone 11 height

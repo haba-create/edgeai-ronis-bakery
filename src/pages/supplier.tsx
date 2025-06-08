@@ -12,9 +12,7 @@ export default function SupplierDashboard() {
         title="Supplier Dashboard"
         description={`Welcome back, ${session?.user?.name || 'Supplier Manager'}! Manage your supply operations.`}
       >
-        <div className="h-[calc(100vh-4rem)]">
-          <SupplierApp />
-        </div>
+        <SupplierApp />
       </DashboardLayout>
     </ProtectedRoute>
   );

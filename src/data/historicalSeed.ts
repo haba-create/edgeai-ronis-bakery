@@ -4,13 +4,27 @@ export async function generateHistoricalData() {
   const db = await getDb();
   console.log('Generating 12 months of historical data...');
   
+  // Get the default tenant created by seedData
+  const tenant = await db.get('SELECT id FROM tenants WHERE slug = "ronis-bakery" LIMIT 1');
+  if (!tenant) {
+    throw new Error('Default tenant not found. Please run seedData first.');
+  }
+  const tenantId = tenant.id;
+  
+  // Check if historical data already exists
+  const existingData = await db.get('SELECT COUNT(*) as count FROM daily_sales_analytics');
+  if (existingData.count > 0) {
+    console.log('Historical data already exists, skipping generation');
+    return;
+  }
+  
   // Generate data for the past 12 months
   const endDate = new Date();
   const startDate = new Date();
   startDate.setMonth(startDate.getMonth() - 12);
   
   // Create realistic customer base
-  const customers = await generateCustomers(db);
+  const customers = await generateCustomers(db, tenantId);
   console.log(`Generated ${customers.length} customers`);
   
   // Generate daily sales data
@@ -52,10 +66,23 @@ export async function generateHistoricalData() {
   console.log('Historical data generation completed!');
 }
 
-async function generateCustomers(db: any) {
+async function generateCustomers(db: any, tenantId: number) {
   const customers = [];
+  
+  // Check if customers already exist for this tenant
+  const existingCustomers = await db.all('SELECT id, full_name, created_at FROM users WHERE tenant_id = ? AND role = "client"', [tenantId]);
+  if (existingCustomers.length > 0) {
+    console.log(`Found ${existingCustomers.length} existing customers for tenant ${tenantId}`);
+    return existingCustomers.map((customer: any) => ({
+      id: customer.id,
+      name: customer.full_name,
+      joinDate: new Date(customer.created_at),
+      segment: 'regular'
+    }));
+  }
+  
   const names = ['Alice Johnson', 'Bob Smith', 'Carol Davis', 'David Wilson', 'Eva Brown', 'Frank Miller', 'Grace Lee', 'Henry Taylor', 'Iris Chen', 'Jack Anderson', 'Kate Thompson', 'Leo Martinez', 'Maya Patel', 'Noah Garcia', 'Olivia Rodriguez', 'Paul Kim', 'Quinn O\'Brien', 'Ruby Singh', 'Sam Jackson', 'Tina Wong', 'Uma Sharma', 'Victor Ng', 'Wendy Liu', 'Xavier Costa', 'Yuki Tanaka', 'Zoe Adams', 'Aaron Clarke', 'Beth Moore', 'Chris Evans', 'Diana Prince'];
-  const emails = names.map(name => name.toLowerCase().replace(' ', '.') + '@example.com');
+  const emails = names.map((name, index) => name.toLowerCase().replace(' ', '.').replace('\'', '') + '.customer' + index + '@ronisbakery.com');
   const acquisitionChannels = ['google_ads', 'facebook', 'instagram', 'word_of_mouth', 'local_newspaper', 'delivery_app', 'walking_by'];
   const segments = ['premium', 'regular', 'budget', 'occasional'];
   
@@ -64,9 +91,10 @@ async function generateCustomers(db: any) {
     joinDate.setDate(joinDate.getDate() - Math.floor(Math.random() * 365));
     
     await db.run(
-      `INSERT INTO users (email, password_hash, full_name, phone, role, is_active, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO users (tenant_id, email, password_hash, full_name, phone, role, is_active, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
+        tenantId,
         emails[i],
         'hashed_password_' + i,
         names[i],

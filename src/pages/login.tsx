@@ -22,7 +22,6 @@ interface User {
 
 export default function Login() {
   const router = useRouter();
-  const { data: session, status } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [selectedTenant, setSelectedTenant] = useState<string>('');
@@ -32,6 +31,15 @@ export default function Login() {
   const [step, setStep] = useState<'login' | 'tenant-selection'>('login');
   const [userTenants, setUserTenants] = useState<Tenant[]>([]);
   const [userInfo, setUserInfo] = useState<User | null>(null);
+  const [checkSession, setCheckSession] = useState(false);
+  
+  // Only check session after user attempts to login, not on page load
+  const { data: session, status } = useSession({ 
+    required: false,
+    onUnauthenticated() {
+      // User is not authenticated, which is expected on login page
+    }
+  });
 
   // Mock user database for demo purposes
   const mockUsers: User[] = [
@@ -188,13 +196,14 @@ export default function Login() {
     }
   };
 
-  if (status === 'loading') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <LoadingSpinner message="Loading..." />
-      </div>
-    );
-  }
+  // Check for existing session and redirect if authenticated
+  useEffect(() => {
+    if (session && status === 'authenticated') {
+      redirectToDashboard(session.user.role, session.user.tenantId);
+    }
+  }, [session, status]);
+
+  // Don't block the page on session loading - show the login form by default
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">

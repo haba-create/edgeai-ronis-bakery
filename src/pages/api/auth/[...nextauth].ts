@@ -1,7 +1,6 @@
 import NextAuth, { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { compare } from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import { getDb } from '@/utils/db';
 
 // Define custom user type
@@ -165,34 +164,8 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   jwt: {
-    secret: process.env.NEXTAUTH_SECRET || 'your-secret-key-here',
-    // Custom JWT encode/decode to include tenant information
-    encode: async ({ secret, token }) => {
-      const encodedToken = jwt.sign(
-        {
-          id: token?.id,
-          email: token?.email,
-          name: token?.name,
-          role: token?.role,
-          supplierId: token?.supplierId,
-          tenantId: token?.tenantId,
-          tenantName: token?.tenantName,
-          iat: Math.floor(Date.now() / 1000),
-          exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60), // 30 days
-        },
-        secret,
-        {
-          algorithm: 'HS256',
-        }
-      );
-      return encodedToken;
-    },
-    decode: async ({ secret, token }) => {
-      const decodedToken = jwt.verify(token!, secret, {
-        algorithms: ['HS256'],
-      }) as any;
-      return decodedToken;
-    },
+    secret: process.env.NEXTAUTH_SECRET,
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   pages: {
     signIn: '/login',

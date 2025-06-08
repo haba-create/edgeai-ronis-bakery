@@ -12,9 +12,7 @@ export default function ClientDashboard() {
         title="Restaurant Dashboard"
         description={`Welcome back, ${session?.user?.name || 'Restaurant Owner'}! Manage your bakery operations.`}
       >
-        <div className="h-[calc(100vh-4rem)]">
-          <ClientApp />
-        </div>
+        <ClientApp />
       </DashboardLayout>
     </ProtectedRoute>
   );
