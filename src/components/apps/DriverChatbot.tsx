@@ -8,18 +8,32 @@ interface Message {
   sender: 'user' | 'bot';
   timestamp: Date;
   suggestions?: string[];
+  action?: {
+    type: 'complete_delivery' | 'mark_arrived' | 'navigate' | 'call' | 'show_earnings';
+    data?: any;
+  };
 }
 
-export default function DriverChatbot() {
+interface DriverChatbotProps {
+  currentDelivery?: any;
+  deliveries?: any[];
+  onCompleteDelivery?: () => void;
+  onMarkArrived?: () => void;
+  earnings?: number;
+}
+
+export default function DriverChatbot(props: DriverChatbotProps) {
   const { user, tenantId } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "Hi! I'm your Driver Assistant. I can help with deliveries, navigation, location updates, and earnings tracking. Ready to hit the road?",
+      text: `Hi ${user?.name || 'Driver'}! I'm your AI assistant. ${props.currentDelivery ? `You have an active delivery to ${props.currentDelivery.customerName}.` : 'No active deliveries right now.'} How can I help?`,
       sender: 'bot',
       timestamp: new Date(),
-      suggestions: ['My deliveries', 'Update location', 'Get navigation', 'Earnings summary']
+      suggestions: props.currentDelivery 
+        ? ['Navigate to destination', 'Mark as arrived', 'Call customer', 'View delivery details']
+        : ['Show my deliveries', 'Check earnings', 'Update availability', 'Get help']
     }
   ]);
   const [input, setInput] = useState('');
@@ -43,6 +57,49 @@ export default function DriverChatbot() {
       'logistics-main': 4
     };
     return tenantMapping[tenantSlug] || 1; // Default to 1 if not found
+  };
+
+  const handleQuickAction = (action: string) => {
+    switch (action) {
+      case 'Navigate to destination':
+        if (props.currentDelivery) {
+          window.open(`https://maps.google.com/?q=${props.currentDelivery.address}`, '_blank');
+        }
+        break;
+      case 'Mark as arrived':
+        if (props.onMarkArrived) {
+          props.onMarkArrived();
+          setMessages(prev => [...prev, {
+            id: Date.now().toString(),
+            text: "I've marked you as arrived. Please complete the delivery when ready.",
+            sender: 'bot',
+            timestamp: new Date(),
+            suggestions: ['Complete delivery', 'Call customer']
+          }]);
+        }
+        break;
+      case 'Complete delivery':
+        if (props.onCompleteDelivery) {
+          props.onCompleteDelivery();
+          setMessages(prev => [...prev, {
+            id: Date.now().toString(),
+            text: "Great job! Delivery completed. Moving to your next task.",
+            sender: 'bot',
+            timestamp: new Date(),
+            suggestions: ['Show next delivery', 'Check earnings', 'Take a break']
+          }]);
+        }
+        break;
+      case 'Check earnings':
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          text: `Your earnings today: £${props.earnings?.toFixed(2) || '0.00'}. Keep up the great work!`,
+          sender: 'bot',
+          timestamp: new Date(),
+          suggestions: ['Show detailed breakdown', 'Compare to yesterday', 'Set earnings goal']
+        }]);
+        break;
+    }
   };
 
   const handleSend = async () => {
@@ -199,7 +256,13 @@ export default function DriverChatbot() {
                     {message.suggestions.map((suggestion, idx) => (
                       <button
                         key={idx}
-                        onClick={() => handleSuggestionClick(suggestion)}
+                        onClick={() => {
+                          if (['Navigate to destination', 'Mark as arrived', 'Complete delivery', 'Check earnings'].includes(suggestion)) {
+                            handleQuickAction(suggestion);
+                          } else {
+                            handleSuggestionClick(suggestion);
+                          }
+                        }}
                         className="px-3 py-1 text-xs bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
                       >
                         {suggestion}
@@ -228,27 +291,55 @@ export default function DriverChatbot() {
           {/* Quick Actions */}
           <div className="border-t p-2">
             <div className="flex justify-around">
-              <button 
-                onClick={() => handleSuggestionClick('Show my deliveries')}
-                className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
-              >
-                <FiNavigation className="text-gray-600" size={16} />
-                <span className="text-xs text-gray-600 mt-1">Deliveries</span>
-              </button>
-              <button 
-                onClick={() => handleSuggestionClick('Update my current location')}
-                className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
-              >
-                <FiMapPin className="text-gray-600" size={16} />
-                <span className="text-xs text-gray-600 mt-1">Location</span>
-              </button>
-              <button 
-                onClick={() => handleSuggestionClick('Show earnings summary')}
-                className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
-              >
-                <FiPhone className="text-gray-600" size={16} />
-                <span className="text-xs text-gray-600 mt-1">Earnings</span>
-              </button>
+              {props.currentDelivery ? (
+                <>
+                  <button 
+                    onClick={() => handleQuickAction('Navigate to destination')}
+                    className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
+                  >
+                    <FiNavigation className="text-gray-600" size={16} />
+                    <span className="text-xs text-gray-600 mt-1">Navigate</span>
+                  </button>
+                  <button 
+                    onClick={() => handleQuickAction('Mark as arrived')}
+                    className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
+                  >
+                    <FiMapPin className="text-gray-600" size={16} />
+                    <span className="text-xs text-gray-600 mt-1">Arrived</span>
+                  </button>
+                  <button 
+                    onClick={() => window.location.href = `tel:${props.currentDelivery.phone}`}
+                    className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
+                  >
+                    <FiPhone className="text-gray-600" size={16} />
+                    <span className="text-xs text-gray-600 mt-1">Call</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button 
+                    onClick={() => handleSuggestionClick('Show my deliveries')}
+                    className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
+                  >
+                    <FiNavigation className="text-gray-600" size={16} />
+                    <span className="text-xs text-gray-600 mt-1">Deliveries</span>
+                  </button>
+                  <button 
+                    onClick={() => handleSuggestionClick('Update my current location')}
+                    className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
+                  >
+                    <FiMapPin className="text-gray-600" size={16} />
+                    <span className="text-xs text-gray-600 mt-1">Location</span>
+                  </button>
+                  <button 
+                    onClick={() => handleQuickAction('Check earnings')}
+                    className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
+                  >
+                    <FiPhone className="text-gray-600" size={16} />
+                    <span className="text-xs text-gray-600 mt-1">Earnings</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
 

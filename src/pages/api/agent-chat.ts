@@ -1,87 +1,83 @@
-/**
- * Agent Chat API Endpoint
- * Handles chat interactions with role-specific AI agents
- */
-
 import { NextApiRequest, NextApiResponse } from 'next';
-import { runAgentWithContext } from '../../agents/agents';
-import { initDatabase } from '../../utils/db';
-
-interface ChatRequest {
-  message: string;
-  role: string;
-  tenantId: number;
-  userId: number;
-}
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from './auth/[...nextauth]';
+import { executeUnifiedAgent } from '@/agents/unifiedOpenAIAgent';
+import { getDb } from '@/utils/db';
 
 interface ChatResponse {
   success: boolean;
+  reply?: string;
   response?: string;
   error?: string;
   suggestions?: string[];
-  tools_used?: string[];
-  usage?: any;
+  toolCalls?: any[];
+  metadata?: any;
+  timestamp?: string;
 }
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<ChatResponse>
-) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ 
-      success: false, 
-      error: 'Method not allowed' 
-    });
-  }
-
+export default async function handler(req: NextApiRequest, res: NextApiResponse<ChatResponse>) {
   try {
-    // Initialize database
-    await initDatabase();
-
-    const { message, role, tenantId, userId }: ChatRequest = req.body;
-
-    // Validate required parameters
-    if (!message || !role || !tenantId || !userId) {
-      return res.status(400).json({
+    const session = await getServerSession(req, res, authOptions);
+    
+    if (!session?.user?.id) {
+      return res.status(401).json({ 
         success: false,
-        error: 'Missing required parameters: message, role, tenantId, userId'
+        error: 'Unauthorized' 
       });
+    }
+
+    if (req.method !== 'POST') {
+      return res.status(405).json({ 
+        success: false,
+        error: 'Method not allowed' 
+      });
+    }
+
+    const { message, role } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Message is required' 
+      });
+    }
+
+    // Get user role from database if not provided
+    let userRole = role;
+    if (!userRole) {
+      const db = await getDb();
+      const user = await db.get('SELECT role FROM users WHERE id = ?', [session.user.id]);
+      userRole = user?.role || 'client';
     }
 
     // Validate role
     const validRoles = ['client', 'supplier', 'driver', 'admin', 'tenant_admin', 'tenant_manager'];
-    if (!validRoles.includes(role)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid role specified'
-      });
+    if (!validRoles.includes(userRole)) {
+      userRole = 'client'; // Default fallback
     }
 
-    // Run the appropriate agent
-    const result = await runAgentWithContext(role, message, tenantId, userId);
+    // Use the unified agent with detected role
+    const result = await executeUnifiedAgent(message, session.user.id, userRole);
 
-    if (result.success) {
-      res.status(200).json({
-        success: true,
-        response: result.response,
-        suggestions: generateSuggestionsForRole(role),
-        tools_used: result.tools_used,
-        usage: result.usage
-      });
-    } else {
-      res.status(500).json({
-        success: false,
-        error: result.error,
-        response: result.response
-      });
-    }
+    res.status(200).json({
+      success: true,
+      reply: result.response,
+      response: result.response, // Support both field names for compatibility
+      toolCalls: result.toolCalls,
+      metadata: result.metadata,
+      suggestions: generateSuggestionsForRole(userRole),
+      timestamp: new Date().toISOString()
+    });
 
   } catch (error) {
     console.error('Agent chat error:', error);
-    res.status(500).json({
+    
+    res.status(200).json({
       success: false,
+      reply: "I'm having trouble connecting right now. Please try again in a moment or contact support if the issue persists.",
       error: error instanceof Error ? error.message : 'Internal server error',
-      response: 'I apologize, but I encountered an error processing your request. Please try again later.'
+      timestamp: new Date().toISOString(),
+      metadata: { error: true, fallback: true }
     });
   }
 }
@@ -93,40 +89,36 @@ function generateSuggestionsForRole(role: string): string[] {
   switch (role) {
     case 'client':
       return [
-        'Check low stock items',
-        'Create purchase order',
+        'Check my inventory',
+        'Place a new order',
         'View recent orders',
-        'Show analytics dashboard',
-        'Update consumption'
+        'Show analytics dashboard'
       ];
     
     case 'supplier':
       return [
-        'Show pending orders',
+        'Show my orders',
         'Update order status',
-        'Assign delivery driver',
         'View performance metrics',
-        'Check available drivers'
+        'Check delivery schedule'
       ];
     
     case 'driver':
       return [
         'Show my deliveries',
-        'Update my location', 
-        'Get navigation route',
-        'Complete delivery',
-        'View earnings summary'
+        'Check earnings', 
+        'Update delivery status',
+        'Get route information'
       ];
     
     case 'admin':
     case 'tenant_admin':
     case 'tenant_manager':
       return [
-        'System status check',
-        'Tenant overview',
-        'Create new tenant',
-        'Manage users',
-        'View system analytics'
+        'Show all orders',
+        'Assign deliveries',
+        'System overview',
+        'Manage users'
       ];
     
     default:
@@ -136,26 +128,4 @@ function generateSuggestionsForRole(role: string): string[] {
         'What can you do?'
       ];
   }
-}
-
-/**
- * Rate limiting and security middleware (simplified)
- */
-function validateRequest(req: NextApiRequest): { valid: boolean; error?: string } {
-  // Basic validation - in production, add proper authentication
-  const { message, tenantId, userId } = req.body;
-  
-  if (typeof message !== 'string' || message.length > 2000) {
-    return { valid: false, error: 'Invalid message format or length' };
-  }
-  
-  if (!Number.isInteger(tenantId) || tenantId <= 0) {
-    return { valid: false, error: 'Invalid tenant ID' };
-  }
-  
-  if (!Number.isInteger(userId) || userId <= 0) {
-    return { valid: false, error: 'Invalid user ID' };
-  }
-  
-  return { valid: true };
 }
