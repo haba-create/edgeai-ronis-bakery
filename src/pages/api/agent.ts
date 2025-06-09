@@ -1,5 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { processAgentRequest } from '@/agents/agentImplementation';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from './auth/[...nextauth]';
+import { executeUnifiedAgent } from '@/agents/unifiedOpenAIAgent';
 import { initDatabase } from '@/utils/db';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -11,15 +13,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Initialize database if needed
     await initDatabase();
     
-    const { query } = req.body;
+    const session = await getServerSession(req, res, authOptions);
+    
+    const { query, role } = req.body;
     
     if (!query || typeof query !== 'string') {
       return res.status(400).json({ error: 'Query is required and must be a string' });
     }
     
-    const response = await processAgentRequest(query);
+    // Determine role from session or request
+    const userRole = role || session?.user?.role || 'client';
+    const userId = session?.user?.id;
     
-    return res.status(200).json({ response });
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    
+    const response = await executeUnifiedAgent(query, userId, userRole);
+    
+    return res.status(200).json({
+      reply: response.response,
+      toolCalls: response.toolCalls,
+      metadata: response.metadata,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
     console.error('Error processing agent request:', error);
     return res.status(500).json({ 
