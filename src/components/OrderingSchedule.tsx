@@ -174,7 +174,7 @@ const OrderingSchedule: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Ordering Schedule</h1>
+        <h1 className="text-2xl font-bold">Supplier Ordering Schedule</h1>
         
         <div className="flex items-center">
           <label htmlFor="schedule" className="mr-2 text-gray-700">Schedule:</label>

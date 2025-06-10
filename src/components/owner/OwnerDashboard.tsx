@@ -16,10 +16,10 @@ const OwnerDashboard: React.FC = () => {
   const [showChatbot, setShowChatbot] = useState(false);
 
   const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: FiHome },
-    { id: 'inventory', label: 'Inventory', icon: FiBox },
-    { id: 'orders', label: 'Orders', icon: FiShoppingCart },
-    { id: 'schedule', label: 'Ordering Schedule', icon: FiCalendar },
+    { id: 'dashboard', label: 'Business Dashboard', icon: FiHome },
+    { id: 'inventory', label: 'Bakery Supplies', icon: FiBox },
+    { id: 'orders', label: 'Supplier Orders', icon: FiShoppingCart },
+    { id: 'schedule', label: 'Supply Schedule', icon: FiCalendar },
   ];
 
   const renderContent = () => {
@@ -40,30 +40,30 @@ const OwnerDashboard: React.FC = () => {
   const getTabTitle = () => {
     switch (activeTab) {
       case 'dashboard':
-        return 'Business Overview';
+        return 'Bakery Business Overview';
       case 'inventory':
-        return 'Inventory Management';
+        return 'Bakery Supply Management';
       case 'orders':
-        return 'Purchase Orders';
+        return 'Supplier Purchase Orders';
       case 'schedule':
-        return 'Ordering Schedule';
+        return 'Supply Ordering Schedule';
       default:
-        return 'Business Management';
+        return 'Bakery Operations Management';
     }
   };
 
   const getTabDescription = () => {
     switch (activeTab) {
       case 'dashboard':
-        return 'Monitor your business performance, stock levels, and key metrics';
+        return 'Monitor bakery business performance, ingredient stock levels, and key operational metrics';
       case 'inventory':
-        return 'Track stock levels, manage products, and monitor consumption';
+        return 'Track ingredient stock levels, manage bakery supplies, and monitor usage consumption';
       case 'orders':
-        return 'Manage supplier orders, deliveries, and purchase history';
+        return 'Manage supplier purchase orders, ingredient deliveries, and supplier relationships';
       case 'schedule':
-        return 'Plan and schedule regular supplier orders and deliveries';
+        return 'Plan and schedule regular ingredient and supply orders from your suppliers';
       default:
-        return 'Manage your bakery operations efficiently';
+        return 'Manage your bakery supply chain and operations efficiently';
     }
   };
 
@@ -76,8 +76,9 @@ const OwnerDashboard: React.FC = () => {
         {/* Sidebar Navigation */}
         <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
           <div className="p-4 border-b">
-            <h2 className="text-lg font-semibold text-gray-900">Owner Portal</h2>
-            <p className="text-sm text-gray-500">Welcome, {session?.user?.name}</p>
+            <h2 className="text-lg font-semibold text-gray-900">Bakery Management</h2>
+            <p className="text-sm text-gray-500">Supply Chain & Operations</p>
+            <p className="text-xs text-gray-400 mt-1">Welcome, {session?.user?.name}</p>
           </div>
           
           <nav className="flex-1 p-4">
@@ -110,10 +111,10 @@ const OwnerDashboard: React.FC = () => {
               className="w-full flex items-center justify-center px-4 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
             >
               <FiMessageCircle className="h-5 w-5 mr-2" />
-              Business Assistant
+              Supply Chain Assistant
             </button>
             <p className="text-xs text-gray-500 mt-2 text-center">
-              Get insights, manage inventory, and optimize operations with AI
+              AI-powered insights for ingredients, suppliers, and operations
             </p>
           </div>
         </div>

@@ -23,7 +23,7 @@ const OwnerChatbot: React.FC<OwnerChatbotProps> = ({ onClose }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: "Hello! I'm your business intelligence assistant. I can help you analyze performance, manage inventory, track orders, optimize supplier relationships, and make data-driven decisions for Roni's Bakery. What would you like to know about your business today?",
+      content: "Hello! I'm your bakery supply chain assistant. I can help you manage ingredient inventory, analyze supplier performance, track purchase orders, optimize ordering schedules, and make data-driven decisions for your bakery operations. What would you like to know about your supply chain today?",
       isBot: true,
       timestamp: new Date()
     }
@@ -147,8 +147,8 @@ const OwnerChatbot: React.FC<OwnerChatbotProps> = ({ onClose }) => {
             <span className="text-white text-sm font-bold">🏢</span>
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900">Business Assistant</h3>
-            <p className="text-xs text-gray-500">AI-powered business intelligence</p>
+            <h3 className="font-semibold text-gray-900">Supply Chain Assistant</h3>
+            <p className="text-xs text-gray-500">AI-powered supply chain management</p>
           </div>
         </div>
         <button
@@ -228,7 +228,7 @@ const OwnerChatbot: React.FC<OwnerChatbotProps> = ({ onClose }) => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Ask about sales, inventory, orders, trends, optimization..."
+            placeholder="Ask about ingredient inventory, supplier orders, reordering, costs..."
             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
             disabled={isLoading}
           />
@@ -244,10 +244,10 @@ const OwnerChatbot: React.FC<OwnerChatbotProps> = ({ onClose }) => {
         {/* Quick Actions */}
         <div className="mt-3 flex flex-wrap gap-2">
           {[
-            "Show me today's performance",
-            "What items need reordering?",
-            "Analyze sales trends",
-            "Supplier performance review",
+            "Show ingredient stock levels",
+            "What needs reordering?",
+            "Analyze supplier performance",
+            "Review ordering schedule",
             "Cost optimization ideas"
           ].map((suggestion) => (
             <button

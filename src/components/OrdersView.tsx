@@ -96,7 +96,7 @@ const OrdersView: React.FC = () => {
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Purchase Orders</h1>
+        <h1 className="text-2xl font-bold">Supplier Purchase Orders</h1>
         
         <div className="flex space-x-4">
           <div className="flex items-center">
