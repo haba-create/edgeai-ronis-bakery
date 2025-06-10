@@ -1,5 +1,7 @@
 import OpenAI from 'openai';
 import { getDb } from '@/utils/db';
+import { customerTools, executeCustomerTool } from './tools/customer-tools';
+import { ownerTools, executeOwnerTool } from './tools/owner-tools';
 
 // Initialize OpenAI client only if API key is available
 const openai = process.env.OPENAI_API_KEY && 
@@ -14,6 +16,7 @@ interface AgentResponse {
     name: string;
     result: any;
   }>;
+  fallbackMode?: boolean;
   metadata?: {
     role: string;
     userId: string;
@@ -343,6 +346,21 @@ const toolFunctions = {
 
 // Tool definitions for OpenAI
 const getToolsForRole = (role: string) => {
+  // Include role-specific tools
+  let roleTools: any[] = [];
+  
+  if (role === 'client' || role === 'customer') {
+    roleTools = customerTools.map(tool => ({
+      type: "function" as const,
+      function: tool
+    }));
+  } else if (role === 'admin' || role === 'owner') {
+    roleTools = ownerTools.map(tool => ({
+      type: "function" as const,
+      function: tool
+    }));
+  }
+  
   const allTools = [
     // Driver tools
     {
@@ -527,7 +545,9 @@ const getToolsForRole = (role: string) => {
     }
   ];
 
-  return allTools.filter(t => t.role === role || t.role === 'admin').map(t => t.tool);
+  const legacyTools = allTools.filter(t => t.role === role || t.role === 'admin').map(t => t.tool);
+  
+  return [...roleTools, ...legacyTools];
 };
 
 export async function executeUnifiedAgent(
@@ -571,9 +591,11 @@ async function executeWithOpenAI(
   // Create system prompt based on role
   const systemPrompts = {
     driver: "You are an AI assistant for delivery drivers at Roni's Bagel Bakery. Help with delivery management, navigation, and earnings tracking. Use the available tools to provide accurate, real-time information.",
-    admin: "You are an AI assistant for administrators at Roni's Bagel Bakery. Help with order management, delivery assignments, and operational oversight. Use the available tools to manage the platform effectively.",
+    admin: "You are an AI assistant for business owners and administrators at Roni's Bagel Bakery. Help with business analytics, inventory optimization, supplier management, and operational insights. Use the available tools to analyze performance and make data-driven decisions.",
+    owner: "You are an AI assistant for business owners and administrators at Roni's Bagel Bakery. Help with business analytics, inventory optimization, supplier management, and operational insights. Use the available tools to analyze performance and make data-driven decisions.",
     supplier: "You are an AI assistant for suppliers to Roni's Bagel Bakery. Help with order management, inventory coordination, and delivery tracking. Use the available tools to manage your orders.",
-    client: "You are an AI assistant for bakery owners using Roni's Bagel Bakery platform. Help with inventory management, ordering supplies, and business operations. Use the available tools to run your business efficiently."
+    client: "You are a friendly shopping assistant for customers at Roni's Bagel Bakery. Help customers find products, make recommendations, check availability, and provide information about our fresh kosher products. Use the available tools to search products and provide personalized recommendations.",
+    customer: "You are a friendly shopping assistant for customers at Roni's Bagel Bakery. Help customers find products, make recommendations, check availability, and provide information about our fresh kosher products. Use the available tools to search products and provide personalized recommendations."
   };
 
   const systemPrompt = systemPrompts[userRole as keyof typeof systemPrompts] || systemPrompts.client;
@@ -609,9 +631,50 @@ async function executeWithOpenAI(
         const functionName = toolCall.function.name;
         const functionArgs = JSON.parse(toolCall.function.arguments);
 
+        // Try legacy tools first
         if (toolFunctions[functionName as keyof typeof toolFunctions]) {
           try {
             const result = await toolFunctions[functionName as keyof typeof toolFunctions](functionArgs, context);
+            
+            executedTools.push({ name: functionName, result });
+
+            messages.push({
+              role: "tool",
+              tool_call_id: toolCall.id,
+              content: JSON.stringify(result)
+            });
+          } catch (error) {
+            messages.push({
+              role: "tool",
+              tool_call_id: toolCall.id,
+              content: JSON.stringify({ error: (error as Error).message })
+            });
+          }
+        }
+        // Try customer tools
+        else if ((userRole === 'client' || userRole === 'customer') && customerTools.some(t => t.name === functionName)) {
+          try {
+            const result = await executeCustomerTool(functionName, functionArgs, context);
+            
+            executedTools.push({ name: functionName, result });
+
+            messages.push({
+              role: "tool",
+              tool_call_id: toolCall.id,
+              content: JSON.stringify(result)
+            });
+          } catch (error) {
+            messages.push({
+              role: "tool",
+              tool_call_id: toolCall.id,
+              content: JSON.stringify({ error: (error as Error).message })
+            });
+          }
+        }
+        // Try owner tools
+        else if ((userRole === 'admin' || userRole === 'owner') && ownerTools.some(t => t.name === functionName)) {
+          try {
+            const result = await executeOwnerTool(functionName, functionArgs, context);
             
             executedTools.push({ name: functionName, result });
 
