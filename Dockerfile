@@ -48,28 +48,21 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy package files and install production dependencies
+# Copy package files for production dependencies
 COPY package*.json ./
 RUN npm ci --only=production && npm cache clean --force
 
 # Copy built application from builder stage
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
-# Create public directory if it doesn't exist
-RUN mkdir -p ./public
-
-# Copy data and other necessary files
+# Copy necessary files
 COPY --from=builder --chown=nextjs:nodejs /app/src/data ./src/data
-
-# Copy startup script
-COPY --chown=nextjs:nodejs startup.js ./startup.js
+COPY --chown=nextjs:nodejs health-check.js ./
 
 # Create directory for SQLite database with proper permissions
-RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
-
-# Ensure working directory has proper permissions for nextjs user
-RUN chown -R nextjs:nodejs /app
+RUN mkdir -p /app/data && chown -R nextjs:nodejs /app
 
 # Switch to non-root user
 USER nextjs
@@ -81,5 +74,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node health-check.js
 
-# Start the application
+# Start the application using the standalone server
 CMD ["node", "server.js"]
