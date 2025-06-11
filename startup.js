@@ -7,7 +7,7 @@ async function initializeDatabase() {
   
   try {
     // Start the Next.js server in the background
-    const serverProcess = spawn('node', ['server.js'], {
+    const serverProcess = spawn('npm', ['start'], {
       detached: false,
       stdio: ['pipe', 'pipe', 'pipe']
     });

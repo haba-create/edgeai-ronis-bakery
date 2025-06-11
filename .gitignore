@@ -74,4 +74,13 @@ temp/
 .env.production
 .env.test
 .env.docker
-.railway
+.railway/
+railway.toml
+
+# Test files
+cookies.txt
+test-*.js
+puppeteer-*
+
+# Temporary deployment files
+.env.railway

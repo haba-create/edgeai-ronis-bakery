@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import DriverChatbot from './DriverChatbot';
 import { FiNavigation, FiPhone, FiMessageSquare, FiCheckCircle, FiMapPin, FiPackage, FiClock, FiCamera, FiDollarSign, FiTrendingUp } from 'react-icons/fi';
 // WebSocket integration temporarily removed for build
 import { useSession } from 'next-auth/react';
@@ -617,6 +618,9 @@ export default function DriverApp() {
       <div className="bg-black h-4 rounded-b-3xl flex items-center justify-center">
         <div className="w-32 h-1 bg-gray-800 rounded-full"></div>
       </div>
+
+      {/* Driver AI Chatbot */}
+      <DriverChatbot />
     </div>
   );
 }

@@ -80,7 +80,7 @@ const InventoryView: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Inventory Management</h1>
+        <h1 className="text-2xl font-bold">Bakery Supply Inventory</h1>
         
         <div className="flex space-x-4">
           <div className="flex items-center">

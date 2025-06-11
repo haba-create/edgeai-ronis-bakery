@@ -1,18 +1,31 @@
 import { getDb } from '@/utils/db';
 import { Product, ProductWithSupplier, StockAlert, ConsumptionTrend } from '@/models/types';
+import { logger } from '@/utils/logger';
 
 /**
  * Get all products with their suppliers and stock status
  */
 export async function getAllProducts(): Promise<ProductWithSupplier[]> {
+  const logContext = { service: 'productService', operation: 'getAllProducts' };
+  logger.debug('Fetching all products with suppliers', logContext);
+  
   const db = await getDb();
   
-  const products = await db.all(`
+  const query = `
     SELECT p.*, s.name as supplier_name, s.lead_time 
     FROM products p
     LEFT JOIN suppliers s ON p.supplier_id = s.id
     ORDER BY p.name
-  `);
+  `;
+  
+  logger.dbQuery(query, [], logContext);
+  const products = await db.all(query);
+  
+  logger.info('Products fetched successfully', {
+    ...logContext,
+    productCount: products.length,
+    categories: Array.from(new Set(products.map(p => p.category)))
+  });
   
   return products.map(enrichProductWithStockStatus);
 }
@@ -21,17 +34,27 @@ export async function getAllProducts(): Promise<ProductWithSupplier[]> {
  * Get product by ID with supplier and stock status
  */
 export async function getProductById(id: number): Promise<ProductWithSupplier | null> {
+  const logContext = { service: 'productService', operation: 'getProductById', productId: id };
+  logger.debug('Fetching product by ID', logContext);
+  
   const db = await getDb();
   
-  const product = await db.get(`
+  const query = `
     SELECT p.*, s.name as supplier_name, s.lead_time 
     FROM products p
     LEFT JOIN suppliers s ON p.supplier_id = s.id
     WHERE p.id = ?
-  `, [id]);
+  `;
   
-  if (!product) return null;
+  logger.dbQuery(query, [id], logContext);
+  const product = await db.get(query, [id]);
   
+  if (!product) {
+    logger.warn('Product not found', logContext);
+    return null;
+  }
+  
+  logger.debug('Product found', { ...logContext, productName: product.name });
   return enrichProductWithStockStatus(product);
 }
 
@@ -56,17 +79,23 @@ export async function getProductsByCategory(category: string): Promise<ProductWi
  * Get all stock alerts for products that need attention
  */
 export async function getStockAlerts(): Promise<StockAlert[]> {
+  const logContext = { service: 'productService', operation: 'getStockAlerts' };
+  logger.debug('Fetching stock alerts', logContext);
+  
   const db = await getDb();
   
-  const lowStockProducts = await db.all(`
+  const query = `
     SELECT p.*, s.name as supplier_name, s.lead_time, s.id as supplier_id
     FROM products p
     LEFT JOIN suppliers s ON p.supplier_id = s.id
     WHERE p.current_stock <= p.reorder_point
     ORDER BY (p.current_stock / p.reorder_point) ASC
-  `);
+  `;
   
-  return lowStockProducts.map(product => {
+  logger.dbQuery(query, [], logContext);
+  const lowStockProducts = await db.all(query);
+  
+  const alerts = lowStockProducts.map(product => {
     const enrichedProduct = enrichProductWithStockStatus(product);
     const percentRemaining = (product.current_stock / product.reorder_point) * 100;
     
@@ -92,6 +121,15 @@ export async function getStockAlerts(): Promise<StockAlert[]> {
       recommended_order_quantity: recommendedOrderQuantity
     };
   });
+  
+  logger.info('Stock alerts generated', {
+    ...logContext,
+    alertCount: alerts.length,
+    criticalCount: alerts.filter(a => a.priority === 'high').length,
+    mediumCount: alerts.filter(a => a.priority === 'medium').length
+  });
+  
+  return alerts;
 }
 
 /**
@@ -141,12 +179,21 @@ export async function getConsumptionTrends(): Promise<ConsumptionTrend[]> {
  * Update product stock level
  */
 export async function updateProductStock(id: number, newStock: number): Promise<ProductWithSupplier | null> {
+  const logContext = { service: 'productService', operation: 'updateProductStock', productId: id, newStock };
+  logger.debug('Updating product stock', logContext);
+  
   const db = await getDb();
   
-  await db.run(
-    'UPDATE products SET current_stock = ? WHERE id = ?',
-    [newStock, id]
-  );
+  const query = 'UPDATE products SET current_stock = ? WHERE id = ?';
+  logger.dbQuery(query, [newStock, id], logContext);
+  
+  await db.run(query, [newStock, id]);
+  
+  logger.businessEvent('stock_updated', {
+    productId: id,
+    newStock,
+    timestamp: new Date().toISOString()
+  }, logContext);
   
   return getProductById(id);
 }
@@ -155,33 +202,52 @@ export async function updateProductStock(id: number, newStock: number): Promise<
  * Record product consumption
  */
 export async function recordConsumption(product_id: number, quantity: number, notes?: string): Promise<void> {
+  const logContext = { service: 'productService', operation: 'recordConsumption', productId: product_id, quantity };
+  logger.debug('Recording product consumption', logContext);
+  
   const db = await getDb();
   const date = new Date().toISOString().split('T')[0];
   
-  // Record the consumption
-  await db.run(
-    'INSERT INTO consumption_records (record_date, product_id, quantity, notes) VALUES (?, ?, ?, ?)',
-    [date, product_id, quantity, notes || 'Daily usage']
-  );
-  
-  // Update the product's current stock
-  await db.run(
-    'UPDATE products SET current_stock = current_stock - ? WHERE id = ?',
-    [quantity, product_id]
-  );
-  
-  // Update the predicted stockout date based on consumption rate
-  const product = await db.get('SELECT current_stock, consumption_rate FROM products WHERE id = ?', [product_id]);
-  
-  if (product && product.consumption_rate > 0) {
-    const daysUntilStockout = Math.floor(product.current_stock / product.consumption_rate);
-    const stockoutDate = new Date();
-    stockoutDate.setDate(stockoutDate.getDate() + daysUntilStockout);
+  try {
+    // Record the consumption
+    const insertQuery = 'INSERT INTO consumption_records (record_date, product_id, quantity, notes) VALUES (?, ?, ?, ?)';
+    logger.dbQuery(insertQuery, [date, product_id, quantity, notes || 'Daily usage'], logContext);
     
-    await db.run(
-      'UPDATE products SET predicted_stockout = ? WHERE id = ?',
-      [stockoutDate.toISOString().split('T')[0], product_id]
-    );
+    await db.run(insertQuery, [date, product_id, quantity, notes || 'Daily usage']);
+    
+    // Update the product's current stock
+    const updateQuery = 'UPDATE products SET current_stock = current_stock - ? WHERE id = ?';
+    logger.dbQuery(updateQuery, [quantity, product_id], logContext);
+    
+    await db.run(updateQuery, [quantity, product_id]);
+    
+    // Update the predicted stockout date based on consumption rate
+    const selectQuery = 'SELECT current_stock, consumption_rate FROM products WHERE id = ?';
+    logger.dbQuery(selectQuery, [product_id], logContext);
+    
+    const product = await db.get(selectQuery, [product_id]);
+    
+    if (product && product.consumption_rate > 0) {
+      const daysUntilStockout = Math.floor(product.current_stock / product.consumption_rate);
+      const stockoutDate = new Date();
+      stockoutDate.setDate(stockoutDate.getDate() + daysUntilStockout);
+      
+      const stockoutQuery = 'UPDATE products SET predicted_stockout = ? WHERE id = ?';
+      logger.dbQuery(stockoutQuery, [stockoutDate.toISOString().split('T')[0], product_id], logContext);
+      
+      await db.run(stockoutQuery, [stockoutDate.toISOString().split('T')[0], product_id]);
+    }
+    
+    logger.businessEvent('consumption_recorded', {
+      productId: product_id,
+      quantity,
+      remainingStock: product?.current_stock || 0,
+      notes: notes || 'Daily usage'
+    }, logContext);
+    
+  } catch (error) {
+    logger.error('Failed to record consumption', logContext, error as Error);
+    throw error;
   }
 }
 
@@ -189,10 +255,24 @@ export async function recordConsumption(product_id: number, quantity: number, no
  * Get product categories
  */
 export async function getProductCategories(): Promise<string[]> {
+  const logContext = { service: 'productService', operation: 'getProductCategories' };
+  logger.debug('Fetching product categories', logContext);
+  
   const db = await getDb();
   
-  const categories = await db.all('SELECT DISTINCT category FROM products ORDER BY category');
-  return categories.map(c => c.category);
+  const query = 'SELECT DISTINCT category FROM products ORDER BY category';
+  logger.dbQuery(query, [], logContext);
+  
+  const categories = await db.all(query);
+  const categoryList = categories.map(c => c.category);
+  
+  logger.debug('Product categories retrieved', {
+    ...logContext,
+    categoryCount: categoryList.length,
+    categories: categoryList
+  });
+  
+  return categoryList;
 }
 
 // Helper function to enrich a product with stock status information

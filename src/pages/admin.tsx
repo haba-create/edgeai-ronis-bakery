@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import AdminChatbot from '@/components/apps/AdminChatbot';
 import { 
   FiUsers, 
   FiBox, 
@@ -338,6 +339,9 @@ export default function AdminDashboard() {
           </div>
         </div>
       </DashboardLayout>
+      
+      {/* Admin AI Chatbot */}
+      <AdminChatbot />
     </ProtectedRoute>
   );
 }

@@ -1,6 +1,7 @@
 import sqlite3 from 'sqlite3';
 import { open, Database } from 'sqlite';
 import path from 'path';
+import { logger } from './logger';
 
 // Database singleton instance
 let db: Database | null = null;
@@ -9,14 +10,25 @@ let db: Database | null = null;
  * Initialize the database connection
  */
 export async function initDatabase(): Promise<Database> {
-  if (db) return db;
+  if (db) {
+    logger.debug('Database already initialized, returning existing connection');
+    return db;
+  }
   
   const dbPath = path.resolve(process.cwd(), 'ronis_bakery.db');
+  logger.info('Initializing database connection', { dbPath });
   
-  db = await open({
-    filename: dbPath,
-    driver: sqlite3.Database
-  });
+  try {
+    db = await open({
+      filename: dbPath,
+      driver: sqlite3.Database
+    });
+    
+    logger.info('Database connection established successfully', { dbPath });
+  } catch (error) {
+    logger.error('Failed to establish database connection', { dbPath }, error as Error);
+    throw error;
+  }
   
   // Create tables if they don't exist
   await db.exec(`
