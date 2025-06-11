@@ -1,22 +1,56 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { executeUnifiedAgent } from '@/agents/unifiedOpenAIAgent';
 import { getDb } from '@/utils/db';
+import { logger } from '@/utils/logger';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const startTime = Date.now();
+  const requestId = `owner-agent-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  
+  const logContext = {
+    requestId,
+    endpoint: '/api/owner-agent',
+    userAgent: req.headers['user-agent'],
+    ip: Array.isArray(req.headers['x-forwarded-for']) 
+      ? req.headers['x-forwarded-for'][0] 
+      : req.headers['x-forwarded-for'] || req.connection.remoteAddress
+  };
+
+  logger.apiRequest('POST', '/api/owner-agent', logContext);
+
   if (req.method !== 'POST') {
+    logger.warn('Method not allowed', { ...logContext, method: req.method });
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
     const { message, context } = req.body;
     
+    logger.debug('Owner agent request received', {
+      ...logContext,
+      messageLength: message?.length || 0,
+      hasContext: !!context
+    });
+    
     if (!message) {
+      logger.warn('Missing message in request', logContext);
       return res.status(400).json({ error: 'Message is required' });
     }
 
+    logger.agentRequest('owner', message, { ...logContext, sessionId: context?.sessionId });
+
     // Get business data for context
     const db = await getDb();
+    logger.debug('Getting business data for owner context', logContext);
     const businessData = await getBusinessData(db);
+    
+    logger.info('Business data retrieved', {
+      ...logContext,
+      productCount: businessData.productCount,
+      lowStockCount: businessData.lowStockCount,
+      pendingOrders: businessData.pendingOrders,
+      totalInventoryValue: businessData.totalInventoryValue
+    });
 
     // Execute the unified agent with admin/owner context
     const result = await executeUnifiedAgent(
@@ -25,8 +59,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       'admin'  // Use admin role for owner interactions
     );
 
+    logger.agentResponse('owner', result.response?.length || 0, result.toolCalls?.length || 0, logContext);
+
     // Generate business insights based on the query
+    logger.debug('Generating business insights', logContext);
     const insights = await generateBusinessInsights(message, businessData);
+    
+    logger.info('Business insights generated', {
+      ...logContext,
+      insightsCount: insights.length,
+      insightTypes: insights.map(i => i.type)
+    });
+
+    const duration = Date.now() - startTime;
+    logger.apiResponse('POST', '/api/owner-agent', 200, duration, logContext);
 
     res.status(200).json({
       response: result.response,
@@ -34,7 +80,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       fallbackMode: result.fallbackMode
     });
   } catch (error) {
-    console.error('Owner agent error:', error);
+    const duration = Date.now() - startTime;
+    logger.error('Owner agent error', logContext, error as Error);
+    logger.apiResponse('POST', '/api/owner-agent', 500, duration, logContext);
+    
     res.status(500).json({ 
       error: 'Failed to process request',
       response: "I'm sorry, I'm having trouble accessing your business data right now. Please try again or check the individual dashboard sections."

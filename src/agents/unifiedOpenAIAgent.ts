@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 import { getDb } from '@/utils/db';
 import { customerTools, executeCustomerTool } from './tools/customer-tools';
 import { ownerTools, executeOwnerTool } from './tools/owner-tools';
+import { logger } from '@/utils/logger';
 
 // Initialize OpenAI client only if API key is available
 const openai = process.env.OPENAI_API_KEY && 
@@ -555,25 +556,36 @@ export async function executeUnifiedAgent(
   userId: string,
   userRole: string
 ): Promise<AgentResponse> {
+  const requestId = `agent-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const logContext = { requestId, userId, userRole, inputLength: input.length };
+  
+  logger.info('Unified agent execution started', logContext);
+  
   try {
     const db = await getDb();
     const context = { userId, userRole, db };
 
+    logger.debug('Database connection established', logContext);
+
     // If OpenAI is available, use it for intelligent tool calling
     if (openai) {
-      return await executeWithOpenAI(input, userId, userRole, context);
+      logger.info('Using OpenAI for agent execution', logContext);
+      return await executeWithOpenAI(input, userId, userRole, context, requestId);
     } else {
+      logger.warn('OpenAI not available, using fallback mode', logContext);
       // Fallback to simple keyword-based tool execution
       return await executeWithFallback(input, userId, userRole, context);
     }
   } catch (error) {
-    console.error('Error in unified agent execution:', error);
+    logger.error('Unified agent execution failed', logContext, error as Error);
     return {
       response: "I encountered an error while processing your request. Please try again or contact support if the issue persists.",
+      fallbackMode: true,
       metadata: {
         role: userRole,
         userId,
-        executedTools: 0
+        executedTools: 0,
+        fallbackMode: true
       }
     };
   }
@@ -583,7 +595,8 @@ async function executeWithOpenAI(
   input: string,
   userId: string,
   userRole: string,
-  context: { userId: string; userRole: string; db: any }
+  context: { userId: string; userRole: string; db: any },
+  requestId: string
 ): Promise<AgentResponse> {
   // Get role-specific tools
   const tools = getToolsForRole(userRole);
@@ -633,8 +646,14 @@ async function executeWithOpenAI(
 
         // Try legacy tools first
         if (toolFunctions[functionName as keyof typeof toolFunctions]) {
+          const toolStart = Date.now();
           try {
+            logger.toolExecution(functionName, functionArgs, { requestId, userId, userRole });
+            
             const result = await toolFunctions[functionName as keyof typeof toolFunctions](functionArgs, context);
+            
+            const toolDuration = Date.now() - toolStart;
+            logger.toolResult(functionName, true, JSON.stringify(result).length, toolDuration, { requestId, userId, userRole });
             
             executedTools.push({ name: functionName, result });
 
@@ -644,6 +663,10 @@ async function executeWithOpenAI(
               content: JSON.stringify(result)
             });
           } catch (error) {
+            const toolDuration = Date.now() - toolStart;
+            logger.toolResult(functionName, false, 0, toolDuration, { requestId, userId, userRole });
+            logger.error(`Tool execution failed: ${functionName}`, { requestId, userId, userRole }, error as Error);
+            
             messages.push({
               role: "tool",
               tool_call_id: toolCall.id,
@@ -653,8 +676,14 @@ async function executeWithOpenAI(
         }
         // Try customer tools
         else if ((userRole === 'client' || userRole === 'customer') && customerTools.some(t => t.name === functionName)) {
+          const toolStart = Date.now();
           try {
+            logger.toolExecution(functionName, functionArgs, { requestId, userId, userRole });
+            
             const result = await executeCustomerTool(functionName, functionArgs, context);
+            
+            const toolDuration = Date.now() - toolStart;
+            logger.toolResult(functionName, true, JSON.stringify(result).length, toolDuration, { requestId, userId, userRole });
             
             executedTools.push({ name: functionName, result });
 
@@ -664,6 +693,10 @@ async function executeWithOpenAI(
               content: JSON.stringify(result)
             });
           } catch (error) {
+            const toolDuration = Date.now() - toolStart;
+            logger.toolResult(functionName, false, 0, toolDuration, { requestId, userId, userRole });
+            logger.error(`Customer tool execution failed: ${functionName}`, { requestId, userId, userRole }, error as Error);
+            
             messages.push({
               role: "tool",
               tool_call_id: toolCall.id,
@@ -673,8 +706,14 @@ async function executeWithOpenAI(
         }
         // Try owner tools
         else if ((userRole === 'admin' || userRole === 'owner') && ownerTools.some(t => t.name === functionName)) {
+          const toolStart = Date.now();
           try {
+            logger.toolExecution(functionName, functionArgs, { requestId, userId, userRole });
+            
             const result = await executeOwnerTool(functionName, functionArgs, context);
+            
+            const toolDuration = Date.now() - toolStart;
+            logger.toolResult(functionName, true, JSON.stringify(result).length, toolDuration, { requestId, userId, userRole });
             
             executedTools.push({ name: functionName, result });
 
@@ -684,6 +723,10 @@ async function executeWithOpenAI(
               content: JSON.stringify(result)
             });
           } catch (error) {
+            const toolDuration = Date.now() - toolStart;
+            logger.toolResult(functionName, false, 0, toolDuration, { requestId, userId, userRole });
+            logger.error(`Owner tool execution failed: ${functionName}`, { requestId, userId, userRole }, error as Error);
+            
             messages.push({
               role: "tool",
               tool_call_id: toolCall.id,

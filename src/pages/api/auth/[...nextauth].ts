@@ -2,6 +2,7 @@ import NextAuth, { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { compare } from 'bcryptjs';
 import { getDb } from '@/utils/db';
+import { logger } from '@/utils/logger';
 
 // Define custom user type
 interface User {
@@ -115,7 +116,16 @@ export const authOptions: NextAuthOptions = {
         tenantId: { label: 'Tenant ID', type: 'text' }
       },
       async authorize(credentials) {
+        const logContext = {
+          email: credentials?.email,
+          tenantId: credentials?.tenantId,
+          method: 'credentials'
+        };
+        
+        logger.authAttempt('credentials', credentials?.email || 'unknown', logContext);
+        
         if (!credentials?.email || !credentials?.password) {
+          logger.authFailure('Missing email or password', logContext);
           throw new Error('Email and password are required');
         }
 
@@ -123,10 +133,12 @@ export const authOptions: NextAuthOptions = {
         const mockUser = mockUsers.find(u => u.email === credentials.email);
         
         if (!mockUser || mockUser.password !== credentials.password) {
+          logger.authFailure('Invalid credentials', logContext);
           throw new Error('Invalid email or password');
         }
 
         if (!mockUser.isActive) {
+          logger.authFailure('Account disabled', logContext);
           throw new Error('Account is disabled');
         }
 
@@ -135,6 +147,7 @@ export const authOptions: NextAuthOptions = {
         if (credentials.tenantId) {
           selectedTenant = mockUser.tenants.find(t => t.id === credentials.tenantId);
           if (!selectedTenant) {
+            logger.authFailure('Invalid tenant selection', { ...logContext, availableTenants: mockUser.tenants.map(t => t.id) });
             throw new Error('Invalid tenant selection');
           }
         } else if (mockUser.tenants.length === 1) {
@@ -142,8 +155,7 @@ export const authOptions: NextAuthOptions = {
           selectedTenant = mockUser.tenants[0];
         }
 
-        // Return user object with tenant info
-        return {
+        const user = {
           id: mockUser.id,
           email: mockUser.email,
           name: mockUser.name,
@@ -152,6 +164,15 @@ export const authOptions: NextAuthOptions = {
           tenantName: selectedTenant?.name,
           isActive: mockUser.isActive
         };
+        
+        logger.authSuccess(user.id, user.role, {
+          ...logContext,
+          selectedTenant: selectedTenant?.id,
+          tenantName: selectedTenant?.name
+        });
+
+        // Return user object with tenant info
+        return user;
 
         // Fallback to database for production
         // const db = await getDb();
@@ -174,6 +195,12 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async jwt({ token, user }) {
+      logger.debug('JWT callback triggered', {
+        hasUser: !!user,
+        hasToken: !!token,
+        tokenEmail: token?.email
+      });
+      
       if (user) {
         token.id = user.id;
         token.email = user.email;
@@ -182,10 +209,22 @@ export const authOptions: NextAuthOptions = {
         token.supplierId = user.supplierId;
         token.tenantId = user.tenantId;
         token.tenantName = user.tenantName;
+        
+        logger.debug('JWT token updated with user data', {
+          userId: user.id,
+          role: user.role,
+          tenantId: user.tenantId
+        });
       }
       return token;
     },
     async session({ session, token }) {
+      logger.debug('Session callback triggered', {
+        hasSession: !!session,
+        hasToken: !!token,
+        tokenRole: token?.role
+      });
+      
       if (token) {
         session.user.id = token.id;
         session.user.email = token.email;
@@ -194,22 +233,40 @@ export const authOptions: NextAuthOptions = {
         session.user.supplierId = token.supplierId;
         session.user.tenantId = token.tenantId;
         session.user.tenantName = token.tenantName;
+        
+        logger.debug('Session updated with token data', {
+          userId: token.id,
+          role: token.role,
+          tenantId: token.tenantId
+        });
       }
       return session;
     },
     async redirect({ url, baseUrl }) {
+      logger.debug('Redirect callback triggered', {
+        url,
+        baseUrl,
+        isRelative: url.startsWith('/'),
+        isSameOrigin: url.startsWith('http') ? new URL(url).origin === baseUrl : false
+      });
+      
       // Redirect to appropriate dashboard based on user role
       if (url === baseUrl || url === '/') {
+        logger.debug('Redirecting to base URL', { baseUrl });
         return baseUrl;
       }
       // Allows relative callback URLs
       if (url.startsWith('/')) {
-        return `${baseUrl}${url}`;
+        const fullUrl = `${baseUrl}${url}`;
+        logger.debug('Redirecting to relative URL', { url, fullUrl });
+        return fullUrl;
       }
       // Allows callback URLs on the same origin
       else if (new URL(url).origin === baseUrl) {
+        logger.debug('Redirecting to same origin URL', { url });
         return url;
       }
+      logger.debug('Redirecting to base URL (fallback)', { baseUrl });
       return baseUrl;
     }
   },

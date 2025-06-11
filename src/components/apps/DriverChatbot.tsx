@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FiMessageSquare, FiSend, FiX, FiNavigation, FiPhone, FiMapPin } from 'react-icons/fi';
+import { FiMessageSquare, FiSend, FiX, FiTruck, FiMapPin, FiDollarSign } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
 
 interface Message {
@@ -8,32 +8,18 @@ interface Message {
   sender: 'user' | 'bot';
   timestamp: Date;
   suggestions?: string[];
-  action?: {
-    type: 'complete_delivery' | 'mark_arrived' | 'navigate' | 'call' | 'show_earnings';
-    data?: any;
-  };
 }
 
-interface DriverChatbotProps {
-  currentDelivery?: any;
-  deliveries?: any[];
-  onCompleteDelivery?: () => void;
-  onMarkArrived?: () => void;
-  earnings?: number;
-}
-
-export default function DriverChatbot(props: DriverChatbotProps) {
+export default function DriverChatbot() {
   const { user, tenantId } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: `Hi ${user?.name || 'Driver'}! I'm your AI assistant. ${props.currentDelivery ? `You have an active delivery to ${props.currentDelivery.customerName}.` : 'No active deliveries right now.'} How can I help?`,
+      text: "Hi! I'm your Delivery Assistant. I can help you with route optimization, delivery tracking, earnings reports, and navigation. How can I help you today?",
       sender: 'bot',
       timestamp: new Date(),
-      suggestions: props.currentDelivery 
-        ? ['Navigate to destination', 'Mark as arrived', 'Call customer', 'View delivery details']
-        : ['Show my deliveries', 'Check earnings', 'Update availability', 'Get help']
+      suggestions: ['My deliveries', 'Current location', 'Earnings today', 'Route optimization']
     }
   ]);
   const [input, setInput] = useState('');
@@ -56,50 +42,7 @@ export default function DriverChatbot(props: DriverChatbotProps) {
       'hjb-supplier': 3,
       'logistics-main': 4
     };
-    return tenantMapping[tenantSlug] || 1; // Default to 1 if not found
-  };
-
-  const handleQuickAction = (action: string) => {
-    switch (action) {
-      case 'Navigate to destination':
-        if (props.currentDelivery) {
-          window.open(`https://maps.google.com/?q=${props.currentDelivery.address}`, '_blank');
-        }
-        break;
-      case 'Mark as arrived':
-        if (props.onMarkArrived) {
-          props.onMarkArrived();
-          setMessages(prev => [...prev, {
-            id: Date.now().toString(),
-            text: "I've marked you as arrived. Please complete the delivery when ready.",
-            sender: 'bot',
-            timestamp: new Date(),
-            suggestions: ['Complete delivery', 'Call customer']
-          }]);
-        }
-        break;
-      case 'Complete delivery':
-        if (props.onCompleteDelivery) {
-          props.onCompleteDelivery();
-          setMessages(prev => [...prev, {
-            id: Date.now().toString(),
-            text: "Great job! Delivery completed. Moving to your next task.",
-            sender: 'bot',
-            timestamp: new Date(),
-            suggestions: ['Show next delivery', 'Check earnings', 'Take a break']
-          }]);
-        }
-        break;
-      case 'Check earnings':
-        setMessages(prev => [...prev, {
-          id: Date.now().toString(),
-          text: `Your earnings today: £${props.earnings?.toFixed(2) || '0.00'}. Keep up the great work!`,
-          sender: 'bot',
-          timestamp: new Date(),
-          suggestions: ['Show detailed breakdown', 'Compare to yesterday', 'Set earnings goal']
-        }]);
-        break;
-    }
+    return tenantMapping[tenantSlug] || 4; // Default to logistics for drivers
   };
 
   const handleSend = async () => {
@@ -168,17 +111,10 @@ export default function DriverChatbot(props: DriverChatbotProps) {
 
   const getSuggestionsForRole = (role: string): string[] => {
     switch (role) {
-      case 'client':
-        return ['Check inventory', 'Create order', 'View analytics', 'Recent orders', 'Low stock alerts'];
-      case 'supplier':
-        return ['Pending orders', 'Update order status', 'Assign driver', 'Performance metrics'];
       case 'driver':
-        return ['My deliveries', 'Update location', 'Complete delivery', 'Earnings summary'];
-      case 'admin':
-      case 'tenant_admin':
-        return ['System status', 'Tenant overview', 'Create tenant', 'User management'];
+        return ['My deliveries', 'Update location', 'Complete delivery', 'Earnings summary', 'Route optimization'];
       default:
-        return ['My deliveries', 'Get navigation', 'Update location', 'Help'];
+        return ['My deliveries', 'Help', 'Navigation'];
     }
   };
 
@@ -189,46 +125,41 @@ export default function DriverChatbot(props: DriverChatbotProps) {
 
   return (
     <>
-      {/* Chat Button - Mobile Optimized */}
+      {/* Chat Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-20 right-4 p-3 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 transition-all ${
+        className={`fixed bottom-6 right-6 p-4 bg-orange-600 text-white rounded-full shadow-lg hover:bg-orange-700 transition-all ${
           isOpen ? 'hidden' : 'flex'
-        } items-center justify-center z-40`}
+        } items-center justify-center z-[60]`}
       >
-        <FiMessageSquare size={20} />
+        <FiMessageSquare size={24} />
         <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full animate-pulse"></span>
       </button>
 
-      {/* Chat Window - Mobile Optimized */}
+      {/* Chat Window */}
       {isOpen && (
-        <div className="fixed inset-x-4 bottom-4 top-4 bg-white rounded-lg shadow-2xl flex flex-col z-50 max-w-sm mx-auto">
+        <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-white rounded-lg shadow-2xl flex flex-col z-[70]">
           {/* Header */}
-          <div className="p-3 bg-green-600 text-white rounded-t-lg flex items-center justify-between">
+          <div className="p-4 bg-orange-600 text-white rounded-t-lg flex items-center justify-between">
             <div className="flex items-center">
-              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center mr-2">
-                🚗
+              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mr-3">
+                🚛
               </div>
               <div>
-                <h3 className="font-semibold text-sm">
-                  {user?.role === 'driver' ? 'Driver Assistant' : 
-                   user?.role === 'client' ? 'Bakery Assistant' :
-                   user?.role === 'supplier' ? 'Supplier Assistant' : 
-                   'Admin Assistant'}
-                </h3>
-                <p className="text-xs opacity-90">AI-powered {user?.role || 'assistant'}</p>
+                <h3 className="font-semibold">Driver Assistant</h3>
+                <p className="text-xs opacity-90">AI-powered delivery helper</p>
               </div>
             </div>
             <button
               onClick={() => setIsOpen(false)}
               className="p-1 hover:bg-white/20 rounded"
             >
-              <FiX size={18} />
+              <FiX size={20} />
             </button>
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-3">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.map(message => (
               <div key={message.id}>
                 <div
@@ -239,7 +170,7 @@ export default function DriverChatbot(props: DriverChatbotProps) {
                   <div
                     className={`max-w-[80%] p-3 rounded-lg ${
                       message.sender === 'user'
-                        ? 'bg-green-600 text-white'
+                        ? 'bg-orange-600 text-white'
                         : 'bg-gray-100 text-gray-800'
                     }`}
                   >
@@ -256,14 +187,8 @@ export default function DriverChatbot(props: DriverChatbotProps) {
                     {message.suggestions.map((suggestion, idx) => (
                       <button
                         key={idx}
-                        onClick={() => {
-                          if (['Navigate to destination', 'Mark as arrived', 'Complete delivery', 'Check earnings'].includes(suggestion)) {
-                            handleQuickAction(suggestion);
-                          } else {
-                            handleSuggestionClick(suggestion);
-                          }
-                        }}
-                        className="px-3 py-1 text-xs bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
+                        onClick={() => handleSuggestionClick(suggestion)}
+                        className="px-3 py-1 text-sm bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
                       >
                         {suggestion}
                       </button>
@@ -291,60 +216,32 @@ export default function DriverChatbot(props: DriverChatbotProps) {
           {/* Quick Actions */}
           <div className="border-t p-2">
             <div className="flex justify-around">
-              {props.currentDelivery ? (
-                <>
-                  <button 
-                    onClick={() => handleQuickAction('Navigate to destination')}
-                    className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
-                  >
-                    <FiNavigation className="text-gray-600" size={16} />
-                    <span className="text-xs text-gray-600 mt-1">Navigate</span>
-                  </button>
-                  <button 
-                    onClick={() => handleQuickAction('Mark as arrived')}
-                    className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
-                  >
-                    <FiMapPin className="text-gray-600" size={16} />
-                    <span className="text-xs text-gray-600 mt-1">Arrived</span>
-                  </button>
-                  <button 
-                    onClick={() => window.location.href = `tel:${props.currentDelivery.phone}`}
-                    className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
-                  >
-                    <FiPhone className="text-gray-600" size={16} />
-                    <span className="text-xs text-gray-600 mt-1">Call</span>
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button 
-                    onClick={() => handleSuggestionClick('Show my deliveries')}
-                    className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
-                  >
-                    <FiNavigation className="text-gray-600" size={16} />
-                    <span className="text-xs text-gray-600 mt-1">Deliveries</span>
-                  </button>
-                  <button 
-                    onClick={() => handleSuggestionClick('Update my current location')}
-                    className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
-                  >
-                    <FiMapPin className="text-gray-600" size={16} />
-                    <span className="text-xs text-gray-600 mt-1">Location</span>
-                  </button>
-                  <button 
-                    onClick={() => handleQuickAction('Check earnings')}
-                    className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
-                  >
-                    <FiPhone className="text-gray-600" size={16} />
-                    <span className="text-xs text-gray-600 mt-1">Earnings</span>
-                  </button>
-                </>
-              )}
+              <button 
+                onClick={() => handleSuggestionClick('Show my current deliveries')}
+                className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
+              >
+                <FiTruck className="text-gray-600" />
+                <span className="text-xs text-gray-600 mt-1">Deliveries</span>
+              </button>
+              <button 
+                onClick={() => handleSuggestionClick('Update my current location')}
+                className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
+              >
+                <FiMapPin className="text-gray-600" />
+                <span className="text-xs text-gray-600 mt-1">Location</span>
+              </button>
+              <button 
+                onClick={() => handleSuggestionClick('Show my earnings today')}
+                className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
+              >
+                <FiDollarSign className="text-gray-600" />
+                <span className="text-xs text-gray-600 mt-1">Earnings</span>
+              </button>
             </div>
           </div>
 
           {/* Input */}
-          <div className="p-3 border-t">
+          <div className="p-4 border-t">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -356,15 +253,15 @@ export default function DriverChatbot(props: DriverChatbotProps) {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask for help..."
-                className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                placeholder="Ask about deliveries, routes..."
+                className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
               <button
                 type="submit"
                 disabled={!input.trim()}
-                className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <FiSend size={16} />
+                <FiSend size={20} />
               </button>
             </form>
           </div>

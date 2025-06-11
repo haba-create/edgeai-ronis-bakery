@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FiMessageSquare, FiSend, FiX, FiPackage, FiTruck, FiBarChart2 } from 'react-icons/fi';
+import { FiMessageSquare, FiSend, FiX, FiSettings, FiUsers, FiBarChart2 } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
 
 interface Message {
@@ -10,16 +10,16 @@ interface Message {
   suggestions?: string[];
 }
 
-export default function SupplierChatbot() {
+export default function AdminChatbot() {
   const { user, tenantId } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "Hello! I'm your Supplier Assistant. I can help with order management, delivery coordination, and performance tracking. What would you like to do?",
+      text: "Hello! I'm your System Administrator Assistant. I can help with tenant management, user administration, system monitoring, and analytics. What would you like to do?",
       sender: 'bot',
       timestamp: new Date(),
-      suggestions: ['Pending orders', 'Assign driver', 'Update order status', 'Performance metrics']
+      suggestions: ['System status', 'Tenant overview', 'User management', 'System analytics']
     }
   ]);
   const [input, setInput] = useState('');
@@ -111,17 +111,10 @@ export default function SupplierChatbot() {
 
   const getSuggestionsForRole = (role: string): string[] => {
     switch (role) {
-      case 'client':
-        return ['Check inventory', 'Create order', 'View analytics', 'Recent orders', 'Low stock alerts'];
-      case 'supplier':
-        return ['Pending orders', 'Update order status', 'Assign driver', 'Performance metrics'];
-      case 'driver':
-        return ['My deliveries', 'Update location', 'Complete delivery', 'Earnings summary'];
       case 'admin':
-      case 'tenant_admin':
-        return ['System status', 'Tenant overview', 'Create tenant', 'User management'];
+        return ['System status', 'Tenant overview', 'Create tenant', 'User management', 'System analytics'];
       default:
-        return ['Check orders', 'View inventory', 'Track drivers', 'Help'];
+        return ['System status', 'View analytics', 'Help'];
     }
   };
 
@@ -135,7 +128,7 @@ export default function SupplierChatbot() {
       {/* Chat Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-6 right-6 p-4 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 transition-all ${
+        className={`fixed bottom-6 right-6 p-4 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all ${
           isOpen ? 'hidden' : 'flex'
         } items-center justify-center z-[60]`}
       >
@@ -147,19 +140,14 @@ export default function SupplierChatbot() {
       {isOpen && (
         <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-white rounded-lg shadow-2xl flex flex-col z-[70]">
           {/* Header */}
-          <div className="p-4 bg-green-600 text-white rounded-t-lg flex items-center justify-between">
+          <div className="p-4 bg-blue-600 text-white rounded-t-lg flex items-center justify-between">
             <div className="flex items-center">
               <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mr-3">
-                🤖
+                🔧
               </div>
               <div>
-                <h3 className="font-semibold">
-                  {user?.role === 'supplier' ? 'Supplier Assistant' : 
-                   user?.role === 'client' ? 'Bakery Assistant' :
-                   user?.role === 'driver' ? 'Driver Assistant' : 
-                   'Admin Assistant'}
-                </h3>
-                <p className="text-xs opacity-90">AI-powered {user?.role || 'assistant'}</p>
+                <h3 className="font-semibold">Admin Assistant</h3>
+                <p className="text-xs opacity-90">System Administrator AI</p>
               </div>
             </div>
             <button
@@ -182,7 +170,7 @@ export default function SupplierChatbot() {
                   <div
                     className={`max-w-[80%] p-3 rounded-lg ${
                       message.sender === 'user'
-                        ? 'bg-green-600 text-white'
+                        ? 'bg-blue-600 text-white'
                         : 'bg-gray-100 text-gray-800'
                     }`}
                   >
@@ -229,21 +217,21 @@ export default function SupplierChatbot() {
           <div className="border-t p-2">
             <div className="flex justify-around">
               <button 
-                onClick={() => handleSuggestionClick('Show pending orders')}
+                onClick={() => handleSuggestionClick('Show system status')}
                 className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
               >
-                <FiPackage className="text-gray-600" />
-                <span className="text-xs text-gray-600 mt-1">Orders</span>
+                <FiSettings className="text-gray-600" />
+                <span className="text-xs text-gray-600 mt-1">System</span>
               </button>
               <button 
-                onClick={() => handleSuggestionClick('Check available drivers')}
+                onClick={() => handleSuggestionClick('Show tenant overview')}
                 className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
               >
-                <FiTruck className="text-gray-600" />
-                <span className="text-xs text-gray-600 mt-1">Drivers</span>
+                <FiUsers className="text-gray-600" />
+                <span className="text-xs text-gray-600 mt-1">Tenants</span>
               </button>
               <button 
-                onClick={() => handleSuggestionClick('Show performance metrics')}
+                onClick={() => handleSuggestionClick('Show system analytics')}
                 className="flex flex-col items-center p-2 hover:bg-gray-50 rounded"
               >
                 <FiBarChart2 className="text-gray-600" />
@@ -265,13 +253,13 @@ export default function SupplierChatbot() {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask about orders, inventory..."
-                className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                placeholder="Ask about system management..."
+                className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
                 type="submit"
                 disabled={!input.trim()}
-                className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FiSend size={20} />
               </button>

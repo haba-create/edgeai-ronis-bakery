@@ -6,8 +6,9 @@
   },
   "deploy": {
     "startCommand": "node server.js",
-    "healthcheckPath": "/api/dashboard",
+    "healthcheckPath": "/api/health",
     "healthcheckTimeout": 300,
-    "restartPolicyType": "always"
+    "restartPolicyType": "always",
+    "numReplicas": 1
   }
 }
