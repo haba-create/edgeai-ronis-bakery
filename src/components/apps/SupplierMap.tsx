@@ -110,7 +110,7 @@ export default function SupplierMap({ order }: SupplierMapProps) {
           >
             <Popup>
               <div className="text-center">
-                <h3 className="font-bold">Roni's {branch.name}</h3>
+                <h3 className="font-bold">Roni&apos;s {branch.name}</h3>
                 <p className="text-sm">{branch.orders} active orders</p>
                 <p className="text-sm text-blue-600">Next delivery: 2:30 PM</p>
               </div>

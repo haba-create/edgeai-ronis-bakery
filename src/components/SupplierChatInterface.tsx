@@ -202,7 +202,7 @@ const SupplierChatInterface: React.FC<SupplierChatInterfaceProps> = ({
         
         <div className="mt-2">
           <p className="text-xs text-gray-500">
-            💡 Try asking: "Show my current orders", "Track order #2005", "Update order status", or "Show active drivers"
+            💡 Try asking: &quot;Show my current orders&quot;, &quot;Track order #2005&quot;, &quot;Update order status&quot;, or &quot;Show active drivers&quot;
           </p>
         </div>
       </div>

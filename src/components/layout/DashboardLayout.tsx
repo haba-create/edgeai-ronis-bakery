@@ -96,7 +96,7 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-gray-50">
       <Head>
-        <title>{title} - Roni's Bakery Management</title>
+        <title>{title} - Roni&apos;s Bakery Management</title>
         <meta name="description" content={description} />
         <link rel="icon" href="/favicon.ico" />
       </Head>
@@ -118,7 +118,7 @@ export default function DashboardLayout({
           <div className="flex items-center justify-between p-4 border-b">
             <div className="flex items-center">
               <span className="text-2xl">🍞</span>
-              <span className="ml-2 text-lg font-semibold text-gray-900">Roni's Bakery</span>
+              <span className="ml-2 text-lg font-semibold text-gray-900">Roni&apos;s Bakery</span>
             </div>
             <button
               className="lg:hidden"

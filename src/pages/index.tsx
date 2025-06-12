@@ -51,21 +51,21 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
       <Head>
-        <title>Roni's Bakery - Management System</title>
-        <meta name="description" content="Multi-tenant management system for Roni's Bakery" />
+        <title>Roni&apos;s Bakery - Management System</title>
+        <meta name="description" content="Multi-tenant management system for Roni&apos;s Bakery" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="text-6xl mb-6">🍞</div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Welcome to Roni's Bakery</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">Welcome to Roni&apos;s Bakery</h1>
           <p className="text-gray-600 mb-8">Redirecting to your dashboard...</p>
           <LoadingSpinner message="Loading your workspace..." />
           
           {/* Fallback links in case redirect doesn't work */}
           <div className="mt-8 space-y-2">
-            <p className="text-sm text-gray-500">If you're not redirected automatically:</p>
+            <p className="text-sm text-gray-500">If you&apos;re not redirected automatically:</p>
             <div className="space-x-4">
               <Link href="/login" className="text-amber-600 hover:text-amber-700 text-sm font-medium">
                 Sign In

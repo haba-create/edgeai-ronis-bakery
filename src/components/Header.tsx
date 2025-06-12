@@ -16,7 +16,7 @@ const Header: React.FC<HeaderProps> = ({ setView, currentView }) => {
             {/* Logo placeholder - replace with actual logo */}
             <span className="text-amber-800 font-bold text-xl">RB</span>
           </div>
-          <h1 className="text-xl font-bold">Roni's Bakery</h1>
+          <h1 className="text-xl font-bold">Roni&apos;s Bakery</h1>
           <span className="ml-2 text-sm text-amber-200">Belsize Park</span>
         </div>
         

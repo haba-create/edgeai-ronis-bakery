@@ -98,7 +98,7 @@ export default function ClientMap({ order }: ClientMapProps) {
         <Marker position={bakeryLocation} icon={bakeryIcon}>
           <Popup>
             <div className="text-center">
-              <h3 className="font-bold">Roni's Bakery</h3>
+              <h3 className="font-bold">Roni&apos;s Bakery</h3>
               <p className="text-sm">Belsize Park Branch</p>
               <p className="text-sm">Preparing your order...</p>
             </div>
@@ -157,7 +157,7 @@ export default function ClientMap({ order }: ClientMapProps) {
           >
             <Popup>
               <div className="text-center">
-                <p className="text-sm font-medium">Roni's {branch.name}</p>
+                <p className="text-sm font-medium">Roni&apos;s {branch.name}</p>
                 <p className="text-xs text-gray-600">Also available</p>
               </div>
             </Popup>

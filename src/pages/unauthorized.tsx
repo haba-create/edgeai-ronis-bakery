@@ -42,7 +42,7 @@ export default function Unauthorized() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50">
       <Head>
-        <title>Access Denied - Roni's Bakery</title>
+        <title>Access Denied - Roni&apos;s Bakery</title>
         <meta name="description" content="You don't have permission to access this page" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
@@ -57,7 +57,7 @@ export default function Unauthorized() {
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Access Denied</h1>
             
             <p className="text-gray-600 mb-8">
-              You don't have permission to access this page or workspace. 
+              You don&apos;t have permission to access this page or workspace. 
               Please contact your administrator if you believe this is an error.
             </p>
 
