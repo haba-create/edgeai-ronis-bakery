@@ -55,6 +55,8 @@ RUN npm ci --only=production && npm cache clean --force
 # Copy built application from builder stage
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Copy public directory (will be empty but needs to exist)
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 # Copy necessary files
