@@ -1,4 +1,6 @@
 // Simple test page to verify Railway deployment works
+import Link from 'next/link';
+
 export default function TestPage() {
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
@@ -12,7 +14,7 @@ export default function TestPage() {
         <p><strong>Timestamp:</strong> {new Date().toISOString()}</p>
       </div>
       <div style={{ marginTop: '20px' }}>
-        <a href="/login" style={{ color: 'blue' }}>Go to Login Page</a>
+        <Link href="/login" style={{ color: 'blue' }}>Go to Login Page</Link>
       </div>
     </div>
   );
