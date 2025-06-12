@@ -6,48 +6,21 @@ import Link from 'next/link';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 export default function Home() {
-  const { data: session, status } = useSession();
   const router = useRouter();
-
+  
+  // Temporarily disable NextAuth to test Railway deployment
+  // TODO: Re-enable after Railway environment variables are set
+  
   useEffect(() => {
-    if (status === 'loading') return;
-
-    if (!session) {
-      // Not authenticated, redirect to login
+    // Simple redirect to test page for Railway testing
+    if (process.env.NODE_ENV === 'production') {
+      router.push('/test');
+    } else {
       router.push('/login');
-      return;
     }
+  }, [router]);
 
-    // Authenticated, redirect to appropriate dashboard based on role
-    switch (session.user?.role) {
-      case 'admin':
-        router.push('/admin');
-        break;
-      case 'supplier':
-        router.push('/supplier');
-        break;
-      case 'driver':
-        router.push('/driver');
-        break;
-      case 'client':
-        router.push('/dashboard');
-        break;
-      default:
-        router.push('/dashboard');
-    }
-  }, [session, status, router]);
-
-  // Show loading while determining authentication status
-  if (status === 'loading') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <LoadingSpinner message="Loading..." />
-      </div>
-    );
-  }
-
-  // This page will redirect users to the appropriate dashboard
-  // or login page, so we show a loading state
+  // Show loading while redirecting
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
       <Head>
@@ -60,18 +33,20 @@ export default function Home() {
         <div className="text-center">
           <div className="text-6xl mb-6">🍞</div>
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Welcome to Roni&apos;s Bakery</h1>
-          <p className="text-gray-600 mb-8">Redirecting to your dashboard...</p>
-          <LoadingSpinner message="Loading your workspace..." />
+          <p className="text-gray-600 mb-8">
+            {process.env.NODE_ENV === 'production' ? 'Testing Railway deployment...' : 'Redirecting to your dashboard...'}
+          </p>
+          <LoadingSpinner message="Loading..." />
           
-          {/* Fallback links in case redirect doesn't work */}
+          {/* Fallback links */}
           <div className="mt-8 space-y-2">
             <p className="text-sm text-gray-500">If you&apos;re not redirected automatically:</p>
             <div className="space-x-4">
+              <Link href="/test" className="text-amber-600 hover:text-amber-700 text-sm font-medium">
+                Test Page
+              </Link>
               <Link href="/login" className="text-amber-600 hover:text-amber-700 text-sm font-medium">
                 Sign In
-              </Link>
-              <Link href="/apps" className="text-amber-600 hover:text-amber-700 text-sm font-medium">
-                View Demo
               </Link>
             </div>
           </div>
