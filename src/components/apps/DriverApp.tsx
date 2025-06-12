@@ -440,7 +440,7 @@ export default function DriverApp() {
                     onClick={markArrived}
                     className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold"
                   >
-                    I've Arrived
+                    I&apos;ve Arrived
                   </button>
                 )}
 
@@ -491,10 +491,10 @@ export default function DriverApp() {
             <div className="text-4xl mb-4">🎉</div>
             <h3 className="text-xl font-semibold mb-2">All Done!</h3>
             <p className="text-gray-600 text-center mb-6">
-              You've completed all deliveries for now. Great job!
+              You&apos;ve completed all deliveries for now. Great job!
             </p>
             <div className="bg-gray-50 rounded-lg p-4 w-full max-w-sm">
-              <h4 className="font-semibold mb-2">Today's Summary</h4>
+              <h4 className="font-semibold mb-2">Today&apos;s Summary</h4>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span>Deliveries</span>
@@ -567,7 +567,7 @@ export default function DriverApp() {
             <div className="space-y-4">
               <div className="bg-green-50 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-600">Today's Earnings</span>
+                  <span className="text-sm text-gray-600">Today&apos;s Earnings</span>
                   <FiTrendingUp className="text-green-600" />
                 </div>
                 <p className="text-2xl font-bold text-gray-900">£{(driverInfo.earnings + todayEarnings).toFixed(2)}</p>

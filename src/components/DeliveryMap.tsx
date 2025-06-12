@@ -384,7 +384,7 @@ const DeliveryMap: React.FC<DeliveryMapProps> = ({
                   <div className="flex items-center gap-1">
                     <span className="font-medium text-gray-700">Type:</span>
                     <span className="capitalize text-gray-600">
-                      {location.type === 'client' ? 'Roni\'s Branch' : 
+                      {location.type === 'client' ? 'Roni&apos;s Branch' : 
                        location.type === 'supplier' ? 'Supplier' : 
                        'Delivery Driver'}
                     </span>
@@ -436,7 +436,7 @@ const DeliveryMap: React.FC<DeliveryMapProps> = ({
                   {location.type === 'supplier' && (
                     <div className="mt-2 p-2 bg-blue-50 rounded text-xs">
                       <span className="font-medium text-blue-800">Active Supplier</span>
-                      <div className="text-blue-700 mt-1">Delivering to all Roni's branches</div>
+                      <div className="text-blue-700 mt-1">Delivering to all Roni&apos;s branches</div>
                     </div>
                   )}
                   
@@ -461,7 +461,7 @@ const DeliveryMap: React.FC<DeliveryMapProps> = ({
             <span className="text-lg">🏪</span>
             <span className="flex items-center gap-1">
               <div className="w-3 h-3 bg-green-600 rounded-full"></div>
-              Roni's Branches (6)
+              Roni&apos;s Branches (6)
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -489,7 +489,7 @@ const DeliveryMap: React.FC<DeliveryMapProps> = ({
         <div className="mt-3 p-2 bg-blue-50 rounded text-xs">
           <div className="font-medium text-blue-800 mb-1">🌍 Live London Network</div>
           <div className="text-blue-700">
-            Real-time tracking: All suppliers delivering to all Roni's branches across London
+            Real-time tracking: All suppliers delivering to all Roni&apos;s branches across London
           </div>
         </div>
       </div>

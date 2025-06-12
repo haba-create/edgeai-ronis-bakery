@@ -78,7 +78,7 @@ export default function DeliveryTracking() {
   return (
     <div className="min-h-screen bg-gray-100">
       <Head>
-        <title>Delivery Tracking - Roni's Bakery</title>
+        <title>Delivery Tracking - Roni&apos;s Bakery</title>
       </Head>
 
       <AppHeader />

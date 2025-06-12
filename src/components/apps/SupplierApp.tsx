@@ -142,7 +142,7 @@ export default function SupplierApp() {
             </div>
             <div className="flex items-center space-x-3">
               <div className="text-right">
-                <p className="text-sm text-gray-600">Today's Revenue</p>
+                <p className="text-sm text-gray-600">Today&apos;s Revenue</p>
                 <p className="text-xl font-bold text-green-600">£1,245.50</p>
               </div>
             </div>
@@ -294,7 +294,7 @@ export default function SupplierApp() {
 
           {activeTab === 'analytics' && (
             <div className="p-4">
-              <h3 className="text-lg font-semibold mb-4">Today's Performance</h3>
+              <h3 className="text-lg font-semibold mb-4">Today&apos;s Performance</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gray-50 rounded-lg p-4">
                   <p className="text-sm text-gray-600">Orders Completed</p>

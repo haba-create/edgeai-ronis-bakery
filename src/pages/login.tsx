@@ -208,8 +208,8 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
       <Head>
-        <title>Sign In - Roni's Bakery Management System</title>
-        <meta name="description" content="Sign in to access your Roni's Bakery management dashboard" />
+        <title>Sign In - Roni&apos;s Bakery Management System</title>
+        <meta name="description" content="Sign in to access your Roni&apos;s Bakery management dashboard" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
@@ -219,7 +219,7 @@ export default function Login() {
           <div className="text-center">
             <div className="text-6xl mb-4">🍞</div>
             <h2 className="text-3xl font-bold text-gray-900">
-              Welcome to Roni's Bakery
+              Welcome to Roni&apos;s Bakery
             </h2>
             <p className="mt-2 text-sm text-gray-600">
               Multi-tenant management system
@@ -309,7 +309,7 @@ export default function Login() {
 
               <div className="mt-6 text-center">
                 <p className="text-sm text-gray-600">
-                  Don't have an account?{' '}
+                  Don&apos;t have an account?{' '}
                   <Link href="/auth/register" className="font-medium text-amber-600 hover:text-amber-500">
                     Create one here
                   </Link>

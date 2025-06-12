@@ -35,7 +35,7 @@ export default function AppsPage() {
   return (
     <>
       <Head>
-        <title>Roni's Bakery - Multi-App Demo</title>
+        <title>Roni&apos;s Bakery - Multi-App Demo</title>
         <meta name="description" content="Experience Roni's Bakery from different perspectives" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
       </Head>

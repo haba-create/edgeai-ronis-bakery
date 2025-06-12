@@ -16,7 +16,7 @@ const AppHeader: React.FC = () => {
               <span className="text-amber-800 font-bold text-xl">RB</span>
             </div>
             <div>
-              <h1 className="text-xl font-bold">Roni's Bakery</h1>
+              <h1 className="text-xl font-bold">Roni&apos;s Bakery</h1>
               <span className="text-sm text-amber-200">Multi-Platform Ordering System</span>
             </div>
           </div>

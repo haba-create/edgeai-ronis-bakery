@@ -113,7 +113,7 @@ export default function SupplierOrders() {
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Today's Revenue</p>
+                  <p className="text-sm text-gray-600">Today&apos;s Revenue</p>
                   <p className="text-2xl font-bold text-gray-900">£2,450</p>
                 </div>
                 <FiPackage className="h-8 w-8 text-purple-500" />

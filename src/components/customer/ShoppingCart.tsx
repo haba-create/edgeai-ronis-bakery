@@ -210,7 +210,7 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
         </button>
         
         <p className="text-xs text-gray-500 text-center">
-          We'll contact you to confirm delivery details and payment.
+          We&apos;ll contact you to confirm delivery details and payment.
         </p>
       </div>
     </div>
