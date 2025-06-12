@@ -38,10 +38,10 @@ RUN adduser --system --uid 1001 nextjs
 # Install runtime dependencies only
 RUN apk add --no-cache libc6-compat
 
-# Copy necessary files from builder
-COPY --from=builder /app/public ./public
+# Copy built application from builder
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
 
 # Copy additional necessary files
 COPY --chown=nextjs:nodejs src/data ./src/data

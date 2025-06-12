@@ -2,7 +2,7 @@
 const http = require('http');
 
 const options = {
-  hostname: 'localhost',
+  hostname: '127.0.0.1', // Use 127.0.0.1 instead of localhost for Docker
   port: process.env.PORT || 3000,
   path: '/api/health',
   method: 'GET',
