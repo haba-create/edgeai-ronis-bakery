@@ -8,7 +8,16 @@ const nextConfig = {
     LOCATION: "Belsize Park, London"
   },
   images: {
-    domains: ['localhost'],
+    domains: ['localhost', 'railway.app'],
+  },
+  // Railway specific configuration
+  experimental: {
+    outputFileTracingRoot: undefined,
+  },
+  // Ensure server listens on all interfaces
+  serverRuntimeConfig: {
+    host: '0.0.0.0',
+    port: process.env.PORT || 3000,
   },
 };
 
