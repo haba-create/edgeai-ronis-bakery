@@ -1,70 +1,55 @@
-# Multi-stage build for Next.js application
-# Stage 1: Build dependencies and application
+# Production Dockerfile optimized for Railway.app
 FROM node:18-alpine AS builder
 
-# Set working directory
-WORKDIR /app
-
-# Install system dependencies for SQLite and native modules
+# Install dependencies for building
 RUN apk add --no-cache \
-    sqlite \
-    sqlite-dev \
     python3 \
     make \
     g++ \
     libc6-compat
 
-# Copy package files
+WORKDIR /app
+
+# Copy dependency files
 COPY package*.json ./
 
-# Install dependencies (including devDependencies for build)
+# Install all dependencies (including dev for build)
 RUN npm ci
 
 # Copy source code
 COPY . .
 
-# Set environment variable for build
-ENV NEXT_TELEMETRY_DISABLED=1
-
-# Build the application
+# Build the Next.js application
+ENV NEXT_TELEMETRY_DISABLED 1
 RUN npm run build
 
-# Stage 2: Production runtime
+# Production stage
 FROM node:18-alpine AS runner
 
 WORKDIR /app
 
-# Install runtime dependencies for SQLite
-RUN apk add --no-cache \
-    sqlite \
-    sqlite-dev \
-    libc6-compat
+ENV NODE_ENV production
+ENV NEXT_TELEMETRY_DISABLED 1
 
-# Set environment for production
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-
-# Create app user for security
+# Add non-root user
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy package files for production dependencies
-COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+# Install runtime dependencies only
+RUN apk add --no-cache libc6-compat
 
-# Copy built application from builder stage
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Copy necessary files from builder
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 
-# Copy public directory (will be empty but needs to exist)
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-
-# Copy necessary files
-COPY --from=builder --chown=nextjs:nodejs /app/src/data ./src/data
+# Copy additional necessary files
+COPY --chown=nextjs:nodejs src/data ./src/data
 COPY --chown=nextjs:nodejs health-check.js ./
+COPY --chown=nextjs:nodejs railway.json ./
 
-# Create directory for SQLite database with proper permissions
-RUN mkdir -p /app/data && chown -R nextjs:nodejs /app
+# Create data directory for SQLite (if using)
+RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
 
 # Switch to non-root user
 USER nextjs
@@ -72,9 +57,13 @@ USER nextjs
 # Expose port
 EXPOSE 3000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node health-check.js
+# Set port environment variable
+ENV PORT 3000
+ENV HOSTNAME "0.0.0.0"
 
-# Start the application using the standalone server
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD node health-check.js || exit 1
+
+# Start the application
 CMD ["node", "server.js"]
