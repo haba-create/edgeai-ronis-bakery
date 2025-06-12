@@ -15,7 +15,10 @@ export async function initDatabase(): Promise<Database> {
     return db;
   }
   
-  const dbPath = path.resolve(process.cwd(), 'ronis_bakery.db');
+  // Use data directory with proper permissions in production
+  const dbPath = process.env.NODE_ENV === 'production' 
+    ? path.resolve(process.cwd(), 'data', 'ronis_bakery.db')
+    : path.resolve(process.cwd(), 'ronis_bakery.db');
   logger.info('Initializing database connection', { dbPath });
   
   try {

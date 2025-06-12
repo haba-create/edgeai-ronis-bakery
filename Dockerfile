@@ -54,11 +54,8 @@ RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
 # Switch to non-root user
 USER nextjs
 
-# Expose port
-EXPOSE 3000
-
-# Set port environment variable
-ENV PORT 3000
+# Railway will set PORT environment variable (usually 8080)
+# Don't hardcode PORT - let Railway set it
 ENV HOSTNAME "0.0.0.0"
 
 # Health check
