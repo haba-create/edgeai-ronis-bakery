@@ -13,9 +13,8 @@ Value: production
 ### 2. NEXTAUTH_URL
 ```
 Key: NEXTAUTH_URL
-Value: https://your-app.up.railway.app
+Value: https://edgeai-ronis-bakery-production.up.railway.app
 ```
-**Note**: Replace `your-app` with your actual Railway app name
 
 ### 3. NEXTAUTH_SECRET
 ```
@@ -47,9 +46,11 @@ For quick setup, copy these and replace the values:
 
 ```
 NODE_ENV=production
-NEXTAUTH_URL=https://your-app-name.up.railway.app
+NEXTAUTH_URL=https://edgeai-ronis-bakery-production.up.railway.app
 NEXTAUTH_SECRET=your-generated-32-char-secret
 OPENAI_API_KEY=sk-your-openai-api-key-here
+PORT=3000
+HOSTNAME=0.0.0.0
 ```
 
 ## ✅ Verification
