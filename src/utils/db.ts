@@ -15,16 +15,8 @@ export async function initDatabase(): Promise<Database> {
     return db;
   }
   
-  // Force data directory usage in containerized environments
-  // Railway and Docker deployments need writable directory
-  const isContainer = process.env.RAILWAY_ENVIRONMENT || 
-                     process.env.NODE_ENV === 'production' ||
-                     process.env.PORT === '8080' ||
-                     process.platform === 'linux';
-  
-  const dbPath = isContainer
-    ? path.resolve(process.cwd(), 'data', 'ronis_bakery.db')
-    : path.resolve(process.cwd(), 'ronis_bakery.db');
+  // Simple database path - Railway can write to project directory
+  const dbPath = path.resolve(process.cwd(), 'ronis_bakery.db');
   logger.info('Initializing database connection', { dbPath });
   
   try {
