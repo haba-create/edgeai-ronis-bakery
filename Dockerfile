@@ -58,9 +58,7 @@ USER nextjs
 # Don't hardcode PORT - let Railway set it
 ENV HOSTNAME "0.0.0.0"
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD node health-check.js || exit 1
+# Remove health check - Railway handles this differently
 
 # Start the application
 CMD ["node", "server.js"]
