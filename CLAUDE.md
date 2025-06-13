@@ -17,16 +17,19 @@ npm run dev
 curl -X POST http://localhost:3000/api/seed
 ```
 
-### Deployment
+### Local Development
 ```bash
-# Railway deployment
-railway up
+# Start development server
+npm run dev
+
+# Start production server locally
+npm run build && npm run start
 ```
 
-## Environment Variables (Production)
+## Environment Variables (Local)
 ```bash
-NODE_ENV=production
-NEXTAUTH_URL=https://your-app.up.railway.app
+NODE_ENV=development
+NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=+GBRy9u6YdJ8SJYsScZoQXEz08Lt3WkgqYmAHf+aOEg=
 OPENAI_API_KEY=your-openai-api-key
 ```
@@ -40,18 +43,18 @@ OPENAI_API_KEY=your-openai-api-key
 ## Key Files
 - `src/agents/` - AI chatbot implementations
 - `src/components/apps/` - Role-specific UI components
-- `railway.json` - Railway deployment config
-- `Dockerfile` - Production container
 - `src/utils/db.ts` - Database utilities
+- `src/pages/` - Next.js pages and API routes
+- `.env.local` - Environment configuration
 
 ## Testing Notes
 - Always test authentication flows after changes
 - Verify chatbots work with database access
-- Check Railway deployment health endpoint: `/api/health`
 - Test multi-tenant data isolation
+- Use `/test` page for debugging environment issues
 
 ## Recent Issues Fixed
-- 502 Railway deployment error (Next.js standalone server)
-- Docker build error (missing public directory)
 - Authentication infinite loops
 - Chatbot UI overlaps
+- Database connection path issues
+- ESLint configuration and build errors
