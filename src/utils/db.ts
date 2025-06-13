@@ -15,8 +15,15 @@ export async function initDatabase(): Promise<Database> {
     return db;
   }
   
-  // Simple database path - Railway can write to project directory
-  const dbPath = path.resolve(process.cwd(), 'ronis_bakery.db');
+  // Smart database path - works for both local Docker Desktop and Railway
+  // Check if Docker data directory exists, otherwise use current directory
+  const fs = require('fs');
+  const dataDir = path.resolve(process.cwd(), 'data');
+  const hasDataDir = fs.existsSync(dataDir);
+  
+  const dbPath = hasDataDir 
+    ? path.resolve(dataDir, 'ronis_bakery.db')  // Docker environment
+    : path.resolve(process.cwd(), 'ronis_bakery.db');  // Local development
   logger.info('Initializing database connection', { dbPath });
   
   try {
