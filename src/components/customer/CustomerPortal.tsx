@@ -177,7 +177,7 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ products, categories })
 
       {/* Shopping Cart Sidebar */}
       {showCart && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
+        <div className="fixed inset-0 z-[45] overflow-hidden">
           <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowCart(false)} />
           <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl">
             <div className="flex items-center justify-between p-4 border-b">
@@ -201,7 +201,7 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ products, categories })
 
       {/* Customer Chatbot */}
       {showChatbot && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
+        <div className="fixed inset-0 z-[50] overflow-hidden">
           <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowChatbot(false)} />
           <div className="absolute right-4 bottom-4 top-4 w-full max-w-md bg-white rounded-lg shadow-xl">
             <CustomerChatbot 

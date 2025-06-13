@@ -419,8 +419,15 @@ export default function ClientApp() {
                 );
               case 'chat':
                 return (
-                  <div className="h-full">
-                    <ChatInterface />
+                  <div className="h-full bg-gray-50 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="text-4xl mb-4">💬</div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">AI Assistant</h3>
+                      <p className="text-gray-600 mb-4">Use the chat button in the bottom-right corner to start a conversation with your AI assistant.</p>
+                      <div className="text-sm text-gray-500">
+                        The assistant can help with inventory, orders, analytics, and more.
+                      </div>
+                    </div>
                   </div>
                 );
               default:

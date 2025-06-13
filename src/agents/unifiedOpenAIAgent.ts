@@ -350,12 +350,12 @@ const getToolsForRole = (role: string) => {
   // Include role-specific tools
   let roleTools: any[] = [];
   
-  if (role === 'client' || role === 'customer') {
+  if (role === 'customer') {
     roleTools = customerTools.map(tool => ({
       type: "function" as const,
       function: tool
     }));
-  } else if (role === 'admin' || role === 'owner') {
+  } else if (role === 'admin' || role === 'owner' || role === 'client') {
     roleTools = ownerTools.map(tool => ({
       type: "function" as const,
       function: tool
@@ -607,7 +607,7 @@ async function executeWithOpenAI(
     admin: "You are an AI assistant for business owners and administrators at Roni's Bagel Bakery. Help with business analytics, inventory optimization, supplier management, and operational insights. Use the available tools to analyze performance and make data-driven decisions.",
     owner: "You are an AI assistant for business owners and administrators at Roni's Bagel Bakery. Help with business analytics, inventory optimization, supplier management, and operational insights. Use the available tools to analyze performance and make data-driven decisions.",
     supplier: "You are an AI assistant for suppliers to Roni's Bagel Bakery. Help with order management, inventory coordination, and delivery tracking. Use the available tools to manage your orders.",
-    client: "You are a friendly shopping assistant for customers at Roni's Bagel Bakery. Help customers find products, make recommendations, check availability, and provide information about our fresh kosher products. Use the available tools to search products and provide personalized recommendations.",
+    client: "You are an AI assistant for business owners at Roni's Bagel Bakery. Help with business analytics, inventory optimization, supplier management, and operational insights. Use the available tools to analyze performance and make data-driven decisions.",
     customer: "You are a friendly shopping assistant for customers at Roni's Bagel Bakery. Help customers find products, make recommendations, check availability, and provide information about our fresh kosher products. Use the available tools to search products and provide personalized recommendations."
   };
 
@@ -625,12 +625,11 @@ async function executeWithOpenAI(
 
   while (iteration < maxIterations) {
     const completion = await openai!.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "o4-mini",
       messages,
       tools: tools.length > 0 ? tools : undefined,
       tool_choice: tools.length > 0 ? "auto" : undefined,
-      max_tokens: 1000,
-      temperature: 0.7,
+      max_completion_tokens: 1000,
     });
 
     const message = completion.choices[0]?.message;
@@ -675,7 +674,7 @@ async function executeWithOpenAI(
           }
         }
         // Try customer tools
-        else if ((userRole === 'client' || userRole === 'customer') && customerTools.some(t => t.name === functionName)) {
+        else if (userRole === 'customer' && customerTools.some(t => t.name === functionName)) {
           const toolStart = Date.now();
           try {
             logger.toolExecution(functionName, functionArgs, { requestId, userId, userRole });
@@ -705,7 +704,7 @@ async function executeWithOpenAI(
           }
         }
         // Try owner tools
-        else if ((userRole === 'admin' || userRole === 'owner') && ownerTools.some(t => t.name === functionName)) {
+        else if ((userRole === 'admin' || userRole === 'owner' || userRole === 'client') && ownerTools.some(t => t.name === functionName)) {
           const toolStart = Date.now();
           try {
             logger.toolExecution(functionName, functionArgs, { requestId, userId, userRole });

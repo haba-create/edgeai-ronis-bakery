@@ -129,7 +129,7 @@ const OwnerDashboard: React.FC = () => {
 
       {/* Owner AI Chatbot */}
       {showChatbot && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
+        <div className="fixed inset-0 z-[50] overflow-hidden">
           <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowChatbot(false)} />
           <div className="absolute right-4 bottom-4 top-4 w-full max-w-md bg-white rounded-lg shadow-xl">
             <OwnerChatbot onClose={() => setShowChatbot(false)} />

@@ -6,7 +6,7 @@ export default function OwnerPage() {
   const { data: session } = useSession();
 
   return (
-    <ProtectedRoute requiredRoles={['admin', 'client']}>
+    <ProtectedRoute requiredRoles={['admin', 'owner']}>
       <OwnerDashboard />
     </ProtectedRoute>
   );

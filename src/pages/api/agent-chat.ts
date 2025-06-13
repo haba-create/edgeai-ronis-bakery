@@ -51,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // Validate role
-    const validRoles = ['client', 'supplier', 'driver', 'admin', 'tenant_admin', 'tenant_manager'];
+    const validRoles = ['client', 'supplier', 'driver', 'admin', 'owner', 'tenant_admin', 'tenant_manager'];
     if (!validRoles.includes(userRole)) {
       userRole = 'client'; // Default fallback
     }
@@ -109,6 +109,16 @@ function generateSuggestionsForRole(role: string): string[] {
         'Check earnings', 
         'Update delivery status',
         'Get route information'
+      ];
+    
+    case 'owner':
+      return [
+        'Show business analytics',
+        'Analyze inventory health',
+        'Get reorder recommendations',
+        'Supplier performance',
+        'Cost optimization',
+        'Consumption trends'
       ];
     
     case 'admin':

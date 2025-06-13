@@ -137,7 +137,7 @@ export default function ClientChatbot() {
         onClick={() => setIsOpen(true)}
         className={`fixed bottom-6 right-6 p-4 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all ${
           isOpen ? 'hidden' : 'flex'
-        } items-center justify-center z-40`}
+        } items-center justify-center z-[40]`}
       >
         <FiMessageSquare size={24} />
         <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full animate-pulse"></span>
@@ -145,7 +145,7 @@ export default function ClientChatbot() {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-white rounded-lg shadow-2xl flex flex-col z-50">
+        <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-white rounded-lg shadow-2xl flex flex-col z-[50]">
           {/* Header */}
           <div className="p-4 bg-blue-600 text-white rounded-t-lg flex items-center justify-between">
             <div className="flex items-center">

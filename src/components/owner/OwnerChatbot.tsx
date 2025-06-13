@@ -55,17 +55,14 @@ const OwnerChatbot: React.FC<OwnerChatbotProps> = ({ onClose }) => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/owner-agent', {
+      const response = await fetch('/api/unified-agent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           message: input.trim(),
-          context: {
-            role: 'owner',
-            sessionId: 'owner-session-' + Date.now()
-          }
+          role: 'owner'
         }),
       });
 
