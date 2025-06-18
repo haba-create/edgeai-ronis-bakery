@@ -2,7 +2,9 @@ import OpenAI from 'openai';
 import { getDb } from '@/utils/db';
 import { customerTools, executeCustomerTool } from './tools/customer-tools';
 import { ownerTools, executeOwnerTool } from './tools/owner-tools';
+import { adminTools, executeAdminTool } from './tools/admin-unified-tools';
 import { logger } from '@/utils/logger';
+import { createTracedAgent } from '@/utils/langsmith';
 
 // Initialize OpenAI client only if API key is available
 const openai = process.env.OPENAI_API_KEY && 
@@ -273,9 +275,9 @@ const toolFunctions = {
       FROM purchase_orders po
       LEFT JOIN tenants t ON po.tenant_id = t.id
       LEFT JOIN delivery_tracking dt ON po.id = dt.order_id
-      WHERE po.supplier_id IN (SELECT id FROM suppliers WHERE email = ? OR contact_email = ?)
+      WHERE po.supplier_id IN (SELECT id FROM suppliers WHERE email = ?)
     `;
-    const params = [user.email, user.email];
+    const params = [user.email];
     
     if (status) {
       query += ' AND po.status = ?';
@@ -355,7 +357,12 @@ const getToolsForRole = (role: string) => {
       type: "function" as const,
       function: tool
     }));
-  } else if (role === 'admin' || role === 'owner' || role === 'client') {
+  } else if (role === 'admin') {
+    roleTools = adminTools.map(tool => ({
+      type: "function" as const,
+      function: tool
+    }));
+  } else if (role === 'owner' || role === 'client') {
     roleTools = ownerTools.map(tool => ({
       type: "function" as const,
       function: tool
@@ -551,7 +558,7 @@ const getToolsForRole = (role: string) => {
   return [...roleTools, ...legacyTools];
 };
 
-export async function executeUnifiedAgent(
+async function _executeUnifiedAgent(
   input: string,
   userId: string,
   userRole: string
@@ -567,17 +574,22 @@ export async function executeUnifiedAgent(
 
     logger.debug('Database connection established', logContext);
 
+    let result: AgentResponse;
+    
     // If OpenAI is available, use it for intelligent tool calling
     if (openai) {
       logger.info('Using OpenAI for agent execution', logContext);
-      return await executeWithOpenAI(input, userId, userRole, context, requestId);
+      result = await executeWithOpenAI(input, userId, userRole, context, requestId);
     } else {
       logger.warn('OpenAI not available, using fallback mode', logContext);
       // Fallback to simple keyword-based tool execution
-      return await executeWithFallback(input, userId, userRole, context);
+      result = await executeWithFallback(input, userId, userRole, context);
     }
+    
+    return result;
   } catch (error) {
     logger.error('Unified agent execution failed', logContext, error as Error);
+    
     return {
       response: "I encountered an error while processing your request. Please try again or contact support if the issue persists.",
       fallbackMode: true,
@@ -604,7 +616,7 @@ async function executeWithOpenAI(
   // Create system prompt based on role
   const systemPrompts = {
     driver: "You are an AI assistant for delivery drivers at Roni's Bagel Bakery. Help with delivery management, navigation, and earnings tracking. Use the available tools to provide accurate, real-time information.",
-    admin: "You are an AI assistant for business owners and administrators at Roni's Bagel Bakery. Help with business analytics, inventory optimization, supplier management, and operational insights. Use the available tools to analyze performance and make data-driven decisions.",
+    admin: "You are an AI assistant for system administrators managing the Roni's Bagel Bakery platform. Help with system monitoring, tenant management, user administration, system analytics, and platform operations. Use the available tools to monitor system health, manage tenants, analyze platform usage, and maintain the multi-tenant system.",
     owner: "You are an AI assistant for business owners and administrators at Roni's Bagel Bakery. Help with business analytics, inventory optimization, supplier management, and operational insights. Use the available tools to analyze performance and make data-driven decisions.",
     supplier: "You are an AI assistant for suppliers to Roni's Bagel Bakery. Help with order management, inventory coordination, and delivery tracking. Use the available tools to manage your orders.",
     client: "You are an AI assistant for business owners at Roni's Bagel Bakery. Help with business analytics, inventory optimization, supplier management, and operational insights. Use the available tools to analyze performance and make data-driven decisions.",
@@ -654,6 +666,7 @@ async function executeWithOpenAI(
             const toolDuration = Date.now() - toolStart;
             logger.toolResult(functionName, true, JSON.stringify(result).length, toolDuration, { requestId, userId, userRole });
             
+            
             executedTools.push({ name: functionName, result });
 
             messages.push({
@@ -665,6 +678,7 @@ async function executeWithOpenAI(
             const toolDuration = Date.now() - toolStart;
             logger.toolResult(functionName, false, 0, toolDuration, { requestId, userId, userRole });
             logger.error(`Tool execution failed: ${functionName}`, { requestId, userId, userRole }, error as Error);
+            
             
             messages.push({
               role: "tool",
@@ -684,6 +698,7 @@ async function executeWithOpenAI(
             const toolDuration = Date.now() - toolStart;
             logger.toolResult(functionName, true, JSON.stringify(result).length, toolDuration, { requestId, userId, userRole });
             
+            
             executedTools.push({ name: functionName, result });
 
             messages.push({
@@ -696,6 +711,7 @@ async function executeWithOpenAI(
             logger.toolResult(functionName, false, 0, toolDuration, { requestId, userId, userRole });
             logger.error(`Customer tool execution failed: ${functionName}`, { requestId, userId, userRole }, error as Error);
             
+            
             messages.push({
               role: "tool",
               tool_call_id: toolCall.id,
@@ -703,13 +719,13 @@ async function executeWithOpenAI(
             });
           }
         }
-        // Try owner tools
-        else if ((userRole === 'admin' || userRole === 'owner' || userRole === 'client') && ownerTools.some(t => t.name === functionName)) {
+        // Try admin tools
+        else if (userRole === 'admin' && adminTools.some(t => t.name === functionName)) {
           const toolStart = Date.now();
           try {
             logger.toolExecution(functionName, functionArgs, { requestId, userId, userRole });
             
-            const result = await executeOwnerTool(functionName, functionArgs, context);
+            const result = await executeAdminTool(functionName, functionArgs, context);
             
             const toolDuration = Date.now() - toolStart;
             logger.toolResult(functionName, true, JSON.stringify(result).length, toolDuration, { requestId, userId, userRole });
@@ -724,7 +740,39 @@ async function executeWithOpenAI(
           } catch (error) {
             const toolDuration = Date.now() - toolStart;
             logger.toolResult(functionName, false, 0, toolDuration, { requestId, userId, userRole });
+            logger.error(`Admin tool execution failed: ${functionName}`, { requestId, userId, userRole }, error as Error);
+            
+            messages.push({
+              role: "tool",
+              tool_call_id: toolCall.id,
+              content: JSON.stringify({ error: (error as Error).message })
+            });
+          }
+        }
+        // Try owner tools
+        else if ((userRole === 'owner' || userRole === 'client') && ownerTools.some(t => t.name === functionName)) {
+          const toolStart = Date.now();
+          try {
+            logger.toolExecution(functionName, functionArgs, { requestId, userId, userRole });
+            
+            const result = await executeOwnerTool(functionName, functionArgs, context);
+            
+            const toolDuration = Date.now() - toolStart;
+            logger.toolResult(functionName, true, JSON.stringify(result).length, toolDuration, { requestId, userId, userRole });
+            
+            
+            executedTools.push({ name: functionName, result });
+
+            messages.push({
+              role: "tool",
+              tool_call_id: toolCall.id,
+              content: JSON.stringify(result)
+            });
+          } catch (error) {
+            const toolDuration = Date.now() - toolStart;
+            logger.toolResult(functionName, false, 0, toolDuration, { requestId, userId, userRole });
             logger.error(`Owner tool execution failed: ${functionName}`, { requestId, userId, userRole }, error as Error);
+            
             
             messages.push({
               role: "tool",
@@ -821,3 +869,6 @@ async function executeWithFallback(
     }
   };
 }
+
+// Export the traced version of the agent
+export const executeUnifiedAgent = createTracedAgent(_executeUnifiedAgent);

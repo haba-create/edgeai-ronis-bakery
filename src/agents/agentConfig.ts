@@ -26,7 +26,7 @@ export const orderingAgentConfig: AgentConfig = {
 // Configuration for the delivery tracking agent
 export const deliveryAgentConfig: AgentConfig = {
   apiKey: process.env.OPENAI_API_KEY || '',
-  model: '04-mini',
+  model: 'gpt-4o-mini',
   maxTokens: 512,
   temperature: 0.2,
   capabilities: [

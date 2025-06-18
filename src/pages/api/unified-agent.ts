@@ -63,7 +63,7 @@ function getUserId(session: any, detectedRole: string): string {
   const mockUserIds: { [key: string]: string } = {
     admin: '1',
     owner: '2', 
-    supplier: '3',
+    supplier: '1002', // Heritage Jewish Breads supplier (supplier@hjb.com)
     driver: '4',
     client: '5',
     customer: '6'

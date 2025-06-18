@@ -61,35 +61,33 @@ export default function DriverChatbot() {
     setIsTyping(true);
 
     try {
-      // Call the agent API
-      const response = await fetch('/api/agent-chat', {
+      // Call the unified agent API
+      const response = await fetch('/api/unified-agent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           message: currentInput,
-          role: user.role,
-          tenantId: getTenantNumericId(tenantId),
-          userId: parseInt(user.id, 10)
+          role: user.role
         }),
       });
 
       const data = await response.json();
 
-      if (data.success) {
+      if (data.response) {
         const botMessage: Message = {
           id: (Date.now() + 1).toString(),
           text: data.response,
           sender: 'bot',
           timestamp: new Date(),
-          suggestions: data.suggestions || getSuggestionsForRole(user.role)
+          suggestions: getSuggestionsForRole(user.role)
         };
         setMessages(prev => [...prev, botMessage]);
       } else {
         const errorMessage: Message = {
           id: (Date.now() + 1).toString(),
-          text: data.error || 'Sorry, I encountered an error. Please try again.',
+          text: 'Sorry, I encountered an error. Please try again.',
           sender: 'bot',
           timestamp: new Date()
         };
@@ -130,7 +128,7 @@ export default function DriverChatbot() {
         onClick={() => setIsOpen(true)}
         className={`fixed bottom-6 right-6 p-4 bg-orange-600 text-white rounded-full shadow-lg hover:bg-orange-700 transition-all ${
           isOpen ? 'hidden' : 'flex'
-        } items-center justify-center z-[40]`}
+        } items-center justify-center z-[9999]`}
       >
         <FiMessageSquare size={24} />
         <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full animate-pulse"></span>
@@ -138,7 +136,7 @@ export default function DriverChatbot() {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-white rounded-lg shadow-2xl flex flex-col z-[50]">
+        <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-white rounded-lg shadow-2xl flex flex-col z-[9999]">
           {/* Header */}
           <div className="p-4 bg-orange-600 text-white rounded-t-lg flex items-center justify-between">
             <div className="flex items-center">

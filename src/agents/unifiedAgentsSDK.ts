@@ -11,7 +11,10 @@ import { logger } from '@/utils/logger';
 // Import all database tools
 import { GetMyDeliveriesTool, UpdateLocationTool, GetNavigationRouteTool, CompleteDeliveryTool, GetDriverEarningsTool } from './tools/driver-tools';
 import { GetSystemStatusTool, GetTenantOverviewTool, CreateTenantTool, UpdateTenantSubscriptionTool, GetSystemAnalyticsTool, ManageUserAccountsTool } from './tools/admin-tools';
+import { GetPendingOrdersTool, UpdateOrderStatusTool, AssignDeliveryDriverTool, GetSupplierPerformanceTool, UpdateDeliveryStatusTool, GetAvailableDriversTool } from './tools/supplier-tools';
+import { GetInventoryStatusTool, CreatePurchaseOrderTool, GetOrderHistoryTool, GetInventoryAnalyticsTool, UpdateProductConsumptionTool, GetClientOrderAnalyticsTool } from './tools/client-tools';
 import { getAgentSDKTools } from './agentSDKTools';
+import { mcpManager } from './mcp-integration';
 
 // Initialize OpenAI client only if API key is available
 const openaiApiKey = process.env.OPENAI_API_KEY && 
@@ -53,8 +56,11 @@ Your capabilities include:
 - User account administration
 - System analytics and performance metrics
 - Platform-wide operations
+- CRM management via HubSpot integration
+- Email communications via MailTrap
+- GitHub repository and issue management
 
-Use the available database tools to provide accurate, real-time information and help with administrative tasks.`,
+Use the available database tools and MCP integrations to provide accurate, real-time information and help with administrative tasks.`,
 
   owner: `You are an AI assistant for business owners at Roni's Bakery. 
 You help with business analytics, inventory optimization, supplier management, and operational insights.
@@ -64,8 +70,11 @@ Your capabilities include:
 - Supplier coordination and evaluation
 - Revenue and cost analysis
 - Operational efficiency recommendations
+- Customer relationship management via HubSpot CRM
+- Email marketing and communications via MailTrap
+- GitHub repository management for development projects
 
-Use the available tools to analyze performance and make data-driven business decisions.`,
+Use the available tools and MCP integrations to analyze performance and make data-driven business decisions.`,
 
   supplier: `You are an AI assistant for suppliers to Roni's Bakery. 
 You help with order management, inventory coordination, and delivery tracking.
@@ -75,8 +84,10 @@ Your capabilities include:
 - Delivery scheduling and tracking
 - Performance metrics and analytics
 - Communication with delivery drivers
+- Customer relationship management via HubSpot CRM
+- Email communications and notifications via MailTrap
 
-Use the available tools to efficiently manage your orders and maintain high service quality.`,
+Use the available tools and MCP integrations to efficiently manage your orders and maintain high service quality.`,
 
   driver: `You are an AI assistant for delivery drivers at Roni's Bakery. 
 You help with delivery management, navigation, earnings tracking, and route optimization.
@@ -141,7 +152,31 @@ function getRoleTools(role: string) {
     );
   }
 
-  // Get Agent SDK tools for other roles
+  // Supplier tools
+  if (role === 'supplier' || role === 'admin') {
+    allTools.push(
+      new GetPendingOrdersTool(),
+      new UpdateOrderStatusTool(),
+      new AssignDeliveryDriverTool(),
+      new GetSupplierPerformanceTool(),
+      new UpdateDeliveryStatusTool(),
+      new GetAvailableDriversTool()
+    );
+  }
+
+  // Client/Owner tools
+  if (role === 'client' || role === 'owner' || role === 'admin') {
+    allTools.push(
+      new GetInventoryStatusTool(),
+      new CreatePurchaseOrderTool(),
+      new GetOrderHistoryTool(),
+      new GetInventoryAnalyticsTool(),
+      new UpdateProductConsumptionTool(),
+      new GetClientOrderAnalyticsTool()
+    );
+  }
+
+  // Get Agent SDK tools for other roles (customer tools, etc.)
   const roleSpecificTools = getAgentSDKTools(role);
   allTools.push(...roleSpecificTools);
 
@@ -158,11 +193,11 @@ export function getAvailableTools(role: string): string[] {
 
 /**
  * Create an Agent instance for a specific role
- * TODO: Complete Agent SDK integration
+ * TODO: Complete OpenAI Agents SDK integration when tool compatibility is resolved
  */
 async function createRoleAgent(role: string, context: AgentContext): Promise<any | null> {
-  // Temporarily disabled for UI fixes and testing
-  logger.info('Agent creation temporarily disabled for UI testing', { role });
+  // Temporarily disabled due to tool compatibility issues
+  logger.info('Agent creation temporarily disabled for compatibility', { role });
   return null;
 }
 
@@ -186,8 +221,25 @@ export async function executeUnifiedAgentsSDK(
 
     logger.debug('Database connection established', logContext);
 
-    // For now, use the existing unified agent implementation
-    // TODO: Complete Agent SDK integration in future iteration
+    // Note: OpenAI Agents SDK integration temporarily disabled due to tool compatibility
+    // The legacy implementation is working well and provides better tool integration
+    if (false && openaiApiKey) {
+      logger.info('Attempting to use OpenAI Agents SDK', logContext);
+      
+      try {
+        const agent = await createRoleAgent(userRole, context);
+        
+        if (agent) {
+          const result = await executeWithAgentsSDK(agent, input, context, requestId);
+          logger.info('OpenAI Agents SDK execution successful', logContext);
+          return result;
+        }
+      } catch (agentError) {
+        logger.warn('OpenAI Agents SDK failed, falling back to legacy implementation', logContext, agentError as Error);
+      }
+    }
+
+    // Fallback to legacy implementation
     logger.info('Using fallback unified agent implementation', logContext);
     const { executeUnifiedAgent } = await import('./unifiedOpenAIAgent');
     const fallbackResult = await executeUnifiedAgent(input, userId, userRole);
@@ -198,7 +250,7 @@ export async function executeUnifiedAgentsSDK(
         role: userRole,
         userId: userId,
         executedTools: fallbackResult.toolCalls?.length || 0,
-        fallbackMode: fallbackResult.fallbackMode,
+        fallbackMode: true,
         agentId: requestId
       }
     };
@@ -220,7 +272,7 @@ export async function executeUnifiedAgentsSDK(
 
 /**
  * Execute using OpenAI Agents SDK
- * TODO: Complete implementation when Agent SDK is properly integrated
+ * TODO: Complete implementation when Agent SDK tool compatibility is resolved
  */
 async function executeWithAgentsSDK(
   agent: any,
@@ -235,30 +287,46 @@ async function executeWithAgentsSDK(
 
 
 /**
- * Health check for the Agents SDK
+ * Health check for the Agents SDK and MCP integrations
  */
 export async function healthCheck(): Promise<{ 
   agentsSDK: boolean; 
   openaiKey: boolean; 
   database: boolean;
   supportedRoles: string[];
+  mcp: {
+    hubspot: boolean;
+    mailtrap: boolean;
+    github: boolean;
+    overall: boolean;
+  };
 }> {
   try {
     const db = await getDb();
     await db.get('SELECT 1'); // Test database connection
     
+    // Check MCP server health
+    const mcpHealth = await mcpManager.healthCheck();
+    
     return {
       agentsSDK: !!openaiApiKey,
       openaiKey: !!openaiApiKey,
       database: true,
-      supportedRoles: Object.keys(ROLE_PROMPTS)
+      supportedRoles: Object.keys(ROLE_PROMPTS),
+      mcp: mcpHealth
     };
   } catch (error) {
     return {
       agentsSDK: !!openaiApiKey,
       openaiKey: !!openaiApiKey,
       database: false,
-      supportedRoles: Object.keys(ROLE_PROMPTS)
+      supportedRoles: Object.keys(ROLE_PROMPTS),
+      mcp: {
+        hubspot: false,
+        mailtrap: false,
+        github: false,
+        overall: false
+      }
     };
   }
 }

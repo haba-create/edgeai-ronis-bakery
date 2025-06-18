@@ -53,8 +53,41 @@ OPENAI_API_KEY=your-openai-api-key
 - Test multi-tenant data isolation
 - Use `/test` page for debugging environment issues
 
+## MCP Integration
+The application now includes Model Context Protocol (MCP) server integrations:
+
+### Available MCP Servers
+- **HubSpot MCP Server**: CRM management and contact operations
+- **MailTrap MCP Server**: Email sending and inbox management 
+- **GitHub MCP Server**: Repository and issue management
+
+### MCP Deployment
+```bash
+# Deploy all MCP servers
+./scripts/deploy-mcp-servers.sh
+
+# Individual server startup
+cd ../mailtrap-mcp-server && npm run http  # Port 3006
+cd ../hubspot-mcp-server && npm run http   # Port 3005
+```
+
+### MCP Tools Available
+- `hubspot_create_contact` - Create HubSpot contacts
+- `hubspot_search_contacts` - Search HubSpot CRM
+- `mailtrap_send_email` - Send emails via MailTrap
+- `mailtrap_get_inboxes` - Get MailTrap sandbox inboxes
+- `github_create_issue` - Create GitHub issues
+- `github_list_repositories` - List GitHub repositories
+
+### Environment Configuration
+Copy `.env.mcp` and update with your tokens:
+- `MAILTRAP_API_TOKEN` - MailTrap API token
+- `HUBSPOT_ACCESS_TOKEN` - HubSpot private app token  
+- `GITHUB_PERSONAL_ACCESS_TOKEN` - GitHub PAT
+
 ## Recent Issues Fixed
 - Authentication infinite loops
 - Chatbot UI overlaps
 - Database connection path issues
 - ESLint configuration and build errors
+- MCP server integration and tool registry setup

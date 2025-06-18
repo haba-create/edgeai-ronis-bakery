@@ -48,13 +48,16 @@ const ChatInterface: React.FC = () => {
     setIsProcessing(true);
     
     try {
-      // Call the AI agent to process the request
-      const response = await fetch('/api/ai-agent', {
+      // Call the unified agent to process the request
+      const response = await fetch('/api/unified-agent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ query: userMessage }),
+        body: JSON.stringify({ 
+          message: userMessage,
+          role: 'customer' // Default role for legacy interface
+        }),
       });
       
       if (!response.ok) {

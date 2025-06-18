@@ -52,16 +52,16 @@ const CustomerChatbot: React.FC<CustomerChatbotProps> = ({ onClose, onAddToCart,
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/customer-agent', {
+      const response = await fetch('/api/unified-agent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           message: input.trim(),
-          products: products,
+          role: 'customer',
           context: {
-            role: 'customer',
+            products: products,
             sessionId: 'customer-session-' + Date.now()
           }
         }),
