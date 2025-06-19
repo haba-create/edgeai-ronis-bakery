@@ -34,10 +34,9 @@ export function createTracedChatModel() {
   }
 
   return new ChatOpenAI({
-    modelName: 'o4-mini',
+    modelName: 'gpt-4o-mini',
     openAIApiKey: process.env.OPENAI_API_KEY,
     maxTokens: 1000,
-    callbacks: undefined, // Temporarily disabled due to compatibility issues
   });
 }
 
@@ -48,8 +47,28 @@ export async function startChatbotTrace(
   runName: string,
   request: TracedRequest
 ): Promise<string | null> {
-  // Temporarily disabled due to compatibility issues
-  return null;
+  if (!langsmithClient || !process.env.LANGSMITH_TRACING) {
+    return null;
+  }
+
+  try {
+    const run = await langsmithClient.createRun({
+      name: runName,
+      run_type: 'chain',
+      inputs: {
+        userId: request.userId,
+        userRole: request.userRole,
+        message: request.message,
+        sessionId: request.sessionId,
+        metadata: request.metadata
+      },
+      project_name: process.env.LANGSMITH_PROJECT || 'ronis-bakery-chatbot'
+    }) as any;
+    return run?.id || null;
+  } catch (error) {
+    console.warn('Failed to start LangSmith trace:', error);
+    return null;
+  }
 }
 
 /**
@@ -60,8 +79,24 @@ export async function completeChatbotTrace(
   response: TracedResponse,
   error?: Error
 ): Promise<void> {
-  // Temporarily disabled due to compatibility issues
-  return;
+  if (!langsmithClient || !runId) {
+    return;
+  }
+
+  try {
+    await langsmithClient.updateRun(runId, {
+      outputs: {
+        response: response.response,
+        toolCalls: response.toolCalls,
+        executedTools: response.executedTools,
+        metadata: response.metadata
+      },
+      error: error?.message,
+      end_time: Date.now()
+    });
+  } catch (error) {
+    console.warn('Failed to complete LangSmith trace:', error);
+  }
 }
 
 /**
@@ -74,24 +109,51 @@ export async function traceToolExecution(
   toolResult: any,
   error?: Error
 ): Promise<void> {
-  // Temporarily disabled due to compatibility issues
-  return;
+  if (!langsmithClient || !parentRunId) {
+    return;
+  }
+
+  try {
+    await langsmithClient.createRun({
+      name: `tool_${toolName}`,
+      run_type: 'tool',
+      inputs: toolArgs,
+      outputs: toolResult,
+      parent_run_id: parentRunId,
+      error: error?.message,
+      project_name: process.env.LANGSMITH_PROJECT || 'ronis-bakery-chatbot'
+    } as any);
+  } catch (error) {
+    console.warn('Failed to trace tool execution:', error);
+  }
 }
 
 /**
  * Create a traced wrapper for the unified agent using modern traceable
  */
-export function createTracedAgent(agentFunction: Function) {
-  // Temporarily disabled due to compatibility issues
-  return agentFunction;
+export function createTracedAgent(agentFunction: any) {
+  if (!process.env.LANGSMITH_TRACING || process.env.LANGSMITH_TRACING !== 'true') {
+    return agentFunction;
+  }
+
+  return traceable(agentFunction as any, {
+    name: 'unified-agent',
+    project_name: process.env.LANGSMITH_PROJECT || 'ronis-bakery-chatbot'
+  });
 }
 
 /**
  * Create a traceable function for tool execution
  */
-export function createTracedTool(toolName: string, toolFunction: Function) {
-  // Temporarily disabled due to compatibility issues
-  return toolFunction;
+export function createTracedTool(toolName: string, toolFunction: any) {
+  if (!process.env.LANGSMITH_TRACING || process.env.LANGSMITH_TRACING !== 'true') {
+    return toolFunction;
+  }
+
+  return traceable(toolFunction as any, {
+    name: `tool_${toolName}`,
+    project_name: process.env.LANGSMITH_PROJECT || 'ronis-bakery-chatbot'
+  });
 }
 
 /**
@@ -101,6 +163,18 @@ export async function logCustomEvent(
   eventName: string,
   eventData: Record<string, any>
 ): Promise<void> {
-  // Temporarily disabled due to compatibility issues
-  return;
+  if (!langsmithClient) {
+    return;
+  }
+
+  try {
+    await langsmithClient.createRun({
+      name: eventName,
+      run_type: 'chain',
+      inputs: eventData,
+      project_name: process.env.LANGSMITH_PROJECT || 'ronis-bakery-chatbot'
+    } as any);
+  } catch (error) {
+    console.warn('Failed to log custom event:', error);
+  }
 }
