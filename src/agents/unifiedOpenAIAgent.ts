@@ -637,7 +637,7 @@ async function executeWithOpenAI(
 
   while (iteration < maxIterations) {
     const completion = await openai!.chat.completions.create({
-      model: "o4-mini",
+      model: "gpt-4o-mini",
       messages,
       tools: tools.length > 0 ? tools : undefined,
       tool_choice: tools.length > 0 ? "auto" : undefined,
