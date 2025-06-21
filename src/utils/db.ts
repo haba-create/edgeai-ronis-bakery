@@ -634,6 +634,20 @@ export async function initDatabase(): Promise<Database> {
     CREATE INDEX IF NOT EXISTS idx_tenants_status ON tenants(subscription_status);
     CREATE INDEX IF NOT EXISTS idx_tenants_type ON tenants(type);
 
+    -- Email logs for tracking agent email notifications
+    CREATE TABLE IF NOT EXISTS email_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL,
+      email_type TEXT NOT NULL,
+      recipient_email TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('sent', 'failed', 'pending')),
+      mailtrap_message_id TEXT,
+      error_message TEXT,
+      sent_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+    );
+
     -- Tool usage audit table for agent interactions
     CREATE TABLE IF NOT EXISTS tool_usage_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -649,6 +663,10 @@ export async function initDatabase(): Promise<Database> {
       FOREIGN KEY (tenant_id) REFERENCES tenants(id),
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
+    
+    CREATE INDEX IF NOT EXISTS idx_email_logs_tenant_id ON email_logs(tenant_id);
+    CREATE INDEX IF NOT EXISTS idx_email_logs_sent_at ON email_logs(sent_at);
+    CREATE INDEX IF NOT EXISTS idx_email_logs_status ON email_logs(status);
     
     CREATE INDEX IF NOT EXISTS idx_tool_usage_tenant_user ON tool_usage_logs(tenant_id, user_id);
     CREATE INDEX IF NOT EXISTS idx_tool_usage_tool_name ON tool_usage_logs(tool_name);

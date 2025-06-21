@@ -12,12 +12,22 @@ export default withAuth(
     }
 
     // Supplier routes
-    if (path.startsWith('/supplier-portal') && !['admin', 'supplier'].includes(token?.role as string)) {
+    if (path.startsWith('/supplier') && !['admin', 'supplier'].includes(token?.role as string)) {
       return NextResponse.redirect(new URL('/unauthorized', req.url));
     }
 
     // Driver routes
     if (path.startsWith('/driver') && !['admin', 'driver'].includes(token?.role as string)) {
+      return NextResponse.redirect(new URL('/unauthorized', req.url));
+    }
+
+    // Dashboard routes (for clients)
+    if (path.startsWith('/dashboard') && !['admin', 'client'].includes(token?.role as string)) {
+      return NextResponse.redirect(new URL('/unauthorized', req.url));
+    }
+
+    // Owner routes (for clients)
+    if (path.startsWith('/owner') && !['admin', 'client'].includes(token?.role as string)) {
       return NextResponse.redirect(new URL('/unauthorized', req.url));
     }
 
@@ -39,8 +49,10 @@ export default withAuth(
 export const config = {
   matcher: [
     '/admin/:path*',
-    '/supplier-portal/:path*',
+    '/supplier/:path*',
     '/driver/:path*',
+    '/dashboard/:path*',
+    '/owner/:path*',
     '/apps/:path*',
     '/api/protected/:path*',
   ],
