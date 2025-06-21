@@ -83,10 +83,34 @@ export default function Login() {
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (status === 'authenticated' && session) {
-      redirectToDashboard(session.user?.role, selectedTenant);
+    if (status === 'authenticated' && session?.user && step === 'login') {
+      // Only redirect if we have a tenant selected or user has single tenant
+      if (session.user.tenantId) {
+        const targetPath = getTargetPath(session.user.role);
+        const currentPath = router.asPath;
+        
+        // Prevent redirect loop by checking current path
+        if (currentPath === '/login' || currentPath === '/') {
+          router.replace(targetPath);
+        }
+      }
     }
-  }, [status, session]);
+  }, [status, session, step, router]);
+
+  const getTargetPath = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return '/admin';
+      case 'supplier':
+        return '/supplier';
+      case 'driver':
+        return '/driver';
+      case 'client':
+        return '/owner';
+      default:
+        return '/owner';
+    }
+  };
 
   const redirectToDashboard = (role: string, tenantId?: string) => {
     const callbackUrl = router.query.callbackUrl as string;
@@ -98,19 +122,19 @@ export default function Login() {
 
     switch (role) {
       case 'admin':
-        router.push('/admin');
+        router.replace('/admin');
         break;
       case 'supplier':
-        router.push('/supplier');
+        router.replace('/supplier');
         break;
       case 'driver':
-        router.push('/driver');
+        router.replace('/driver');
         break;
       case 'client':
-        router.push('/dashboard');
+        router.replace('/owner');
         break;
       default:
-        router.push('/dashboard');
+        router.replace('/owner');
     }
   };
 
@@ -179,7 +203,9 @@ export default function Login() {
     }
 
     if (result?.ok) {
+      // Force redirect immediately after successful login
       redirectToDashboard(user.role, tenantId);
+      return;
     }
   };
 
@@ -196,12 +222,6 @@ export default function Login() {
     }
   };
 
-  // Check for existing session and redirect if authenticated
-  useEffect(() => {
-    if (session && status === 'authenticated') {
-      redirectToDashboard(session.user.role, session.user.tenantId);
-    }
-  }, [session, status]);
 
   // Don't block the page on session loading - show the login form by default
 

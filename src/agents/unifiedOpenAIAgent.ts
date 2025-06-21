@@ -3,6 +3,9 @@ import { getDb } from '@/utils/db';
 import { customerTools, executeCustomerTool } from './tools/customer-tools';
 import { ownerTools, executeOwnerTool } from './tools/owner-tools';
 import { adminTools, executeAdminTool } from './tools/admin-unified-tools';
+import { enhancedOwnerTools, executeEnhancedOwnerTool } from './tools/enhanced-owner-tools';
+import { dynamicSQLTool, executeDynamicSQL } from './tools/dynamic-sql-tool';
+import { emailNotificationTool, sendEmailNotification } from './tools/email-notification-tool';
 import { logger } from '@/utils/logger';
 import { createTracedAgent } from '@/utils/langsmith';
 
@@ -363,11 +366,27 @@ const getToolsForRole = (role: string) => {
       function: tool
     }));
   } else if (role === 'owner' || role === 'client') {
-    roleTools = ownerTools.map(tool => ({
+    // Combine standard owner tools with enhanced tools
+    const allOwnerTools = [...ownerTools, ...enhancedOwnerTools];
+    roleTools = allOwnerTools.map(tool => ({
       type: "function" as const,
       function: tool
     }));
   }
+  
+  // Add dynamic SQL and email tools for ALL roles
+  const universalTools = [
+    {
+      type: "function" as const,
+      function: dynamicSQLTool
+    },
+    {
+      type: "function" as const,
+      function: emailNotificationTool
+    }
+  ];
+  
+  roleTools = [...roleTools, ...universalTools];
   
   const allTools = [
     // Driver tools
@@ -749,7 +768,7 @@ async function executeWithOpenAI(
             });
           }
         }
-        // Try owner tools
+        // Try owner tools (standard)
         else if ((userRole === 'owner' || userRole === 'client') && ownerTools.some(t => t.name === functionName)) {
           const toolStart = Date.now();
           try {
@@ -773,6 +792,98 @@ async function executeWithOpenAI(
             logger.toolResult(functionName, false, 0, toolDuration, { requestId, userId, userRole });
             logger.error(`Owner tool execution failed: ${functionName}`, { requestId, userId, userRole }, error as Error);
             
+            
+            messages.push({
+              role: "tool",
+              tool_call_id: toolCall.id,
+              content: JSON.stringify({ error: (error as Error).message })
+            });
+          }
+        }
+        // Try enhanced owner tools
+        else if ((userRole === 'owner' || userRole === 'client') && enhancedOwnerTools.some(t => t.name === functionName)) {
+          const toolStart = Date.now();
+          try {
+            logger.toolExecution(functionName, functionArgs, { requestId, userId, userRole });
+            
+            const result = await executeEnhancedOwnerTool(functionName, functionArgs, context);
+            
+            const toolDuration = Date.now() - toolStart;
+            logger.toolResult(functionName, true, JSON.stringify(result).length, toolDuration, { requestId, userId, userRole });
+            
+            
+            executedTools.push({ name: functionName, result });
+
+            messages.push({
+              role: "tool",
+              tool_call_id: toolCall.id,
+              content: JSON.stringify(result)
+            });
+          } catch (error) {
+            const toolDuration = Date.now() - toolStart;
+            logger.toolResult(functionName, false, 0, toolDuration, { requestId, userId, userRole });
+            logger.error(`Enhanced owner tool execution failed: ${functionName}`, { requestId, userId, userRole }, error as Error);
+            
+            
+            messages.push({
+              role: "tool",
+              tool_call_id: toolCall.id,
+              content: JSON.stringify({ error: (error as Error).message })
+            });
+          }
+        }
+        // Try dynamic SQL tool
+        else if (functionName === 'execute_dynamic_sql') {
+          const toolStart = Date.now();
+          try {
+            logger.toolExecution(functionName, functionArgs, { requestId, userId, userRole });
+            
+            const result = await executeDynamicSQL(functionArgs, context);
+            
+            const toolDuration = Date.now() - toolStart;
+            logger.toolResult(functionName, true, JSON.stringify(result).length, toolDuration, { requestId, userId, userRole });
+            
+            executedTools.push({ name: functionName, result });
+
+            messages.push({
+              role: "tool",
+              tool_call_id: toolCall.id,
+              content: JSON.stringify(result)
+            });
+          } catch (error) {
+            const toolDuration = Date.now() - toolStart;
+            logger.toolResult(functionName, false, 0, toolDuration, { requestId, userId, userRole });
+            logger.error(`Dynamic SQL tool execution failed: ${functionName}`, { requestId, userId, userRole }, error as Error);
+            
+            messages.push({
+              role: "tool",
+              tool_call_id: toolCall.id,
+              content: JSON.stringify({ error: (error as Error).message })
+            });
+          }
+        }
+        // Try email notification tool
+        else if (functionName === 'send_email_notification') {
+          const toolStart = Date.now();
+          try {
+            logger.toolExecution(functionName, functionArgs, { requestId, userId, userRole });
+            
+            const result = await sendEmailNotification(functionArgs, context);
+            
+            const toolDuration = Date.now() - toolStart;
+            logger.toolResult(functionName, true, JSON.stringify(result).length, toolDuration, { requestId, userId, userRole });
+            
+            executedTools.push({ name: functionName, result });
+
+            messages.push({
+              role: "tool",
+              tool_call_id: toolCall.id,
+              content: JSON.stringify(result)
+            });
+          } catch (error) {
+            const toolDuration = Date.now() - toolStart;
+            logger.toolResult(functionName, false, 0, toolDuration, { requestId, userId, userRole });
+            logger.error(`Email notification tool execution failed: ${functionName}`, { requestId, userId, userRole }, error as Error);
             
             messages.push({
               role: "tool",

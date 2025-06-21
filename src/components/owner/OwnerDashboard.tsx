@@ -6,9 +6,11 @@ import InventoryView from '@/components/InventoryView';
 import OrdersView from '@/components/OrdersView';
 import OrderingSchedule from '@/components/OrderingSchedule';
 import OwnerChatbot from './OwnerChatbot';
-import { FiMessageCircle, FiX, FiHome, FiBox, FiShoppingCart, FiCalendar } from 'react-icons/fi';
+import ActivityLog from '@/components/ActivityLog';
+import AgentNotifications from '@/components/AgentNotifications';
+import { FiMessageCircle, FiX, FiHome, FiBox, FiShoppingCart, FiCalendar, FiActivity } from 'react-icons/fi';
 
-type ActiveTab = 'dashboard' | 'inventory' | 'orders' | 'schedule';
+type ActiveTab = 'dashboard' | 'inventory' | 'orders' | 'schedule' | 'activity';
 
 const OwnerDashboard: React.FC = () => {
   const { data: session } = useSession();
@@ -20,6 +22,7 @@ const OwnerDashboard: React.FC = () => {
     { id: 'inventory', label: 'Bakery Supplies', icon: FiBox },
     { id: 'orders', label: 'Supplier Orders', icon: FiShoppingCart },
     { id: 'schedule', label: 'Supply Schedule', icon: FiCalendar },
+    { id: 'activity', label: 'Agent Activity', icon: FiActivity },
   ];
 
   const renderContent = () => {
@@ -32,6 +35,8 @@ const OwnerDashboard: React.FC = () => {
         return <OrdersView />;
       case 'schedule':
         return <OrderingSchedule />;
+      case 'activity':
+        return <ActivityLog tenantId={1} limit={100} showFilters={true} />;
       default:
         return <Dashboard />;
     }
@@ -47,6 +52,8 @@ const OwnerDashboard: React.FC = () => {
         return 'Supplier Purchase Orders';
       case 'schedule':
         return 'Supply Ordering Schedule';
+      case 'activity':
+        return 'AI Agent Activity Monitor';
       default:
         return 'Bakery Operations Management';
     }
@@ -62,6 +69,8 @@ const OwnerDashboard: React.FC = () => {
         return 'Manage supplier purchase orders, ingredient deliveries, and supplier relationships';
       case 'schedule':
         return 'Plan and schedule regular ingredient and supply orders from your suppliers';
+      case 'activity':
+        return 'Monitor AI agent actions, database changes, and system activities in real-time';
       default:
         return 'Manage your bakery supply chain and operations efficiently';
     }
@@ -136,6 +145,13 @@ const OwnerDashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Real-time Agent Notifications */}
+      <AgentNotifications 
+        position="top-right"
+        maxNotifications={3}
+        autoHideDelay={10000}
+      />
     </DashboardLayout>
   );
 };

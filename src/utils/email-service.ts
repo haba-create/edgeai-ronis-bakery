@@ -13,13 +13,13 @@ export const EMAIL_TEMPLATES = {
 };
 
 export interface EmailData {
-  to: Array<{ email: string; name?: string }>;
-  from: { email: string; name: string };
+  to: string | Array<{ email: string; name?: string }>;
+  cc?: string[];
   subject: string;
-  templateId?: string;
-  templateData?: Record<string, any>;
-  text?: string;
   html?: string;
+  text?: string;
+  category?: string;
+  metadata?: Record<string, any>;
 }
 
 // MailTrap MCP integration
@@ -33,17 +33,22 @@ export class MailTrapService {
   
   async sendEmail(emailData: EmailData): Promise<{ success: boolean; messageId?: string; error?: string }> {
     try {
+      // Normalize recipient to string
+      const toEmail = typeof emailData.to === 'string' ? emailData.to : emailData.to[0].email;
+      
       const response = await fetch(`${this.mcpEndpoint}/tools/mailtrap_send_email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          to: emailData.to,
-          from: emailData.from,
+          to: [{ email: toEmail }],
+          cc: emailData.cc?.map(email => ({ email })) || [],
+          from: { email: 'noreply@ronisbakery.com', name: "Roni's Bakery" },
           subject: emailData.subject,
           text: emailData.text,
-          html: emailData.html
+          html: emailData.html,
+          category: emailData.category
         })
       });
       
@@ -53,46 +58,9 @@ export class MailTrapService {
       
       const result = await response.json();
       
-      // Log email in database
-      const db = await getDb();
-      await db.run(`
-        INSERT INTO email_logs (
-          recipient_email, 
-          sender_email, 
-          subject, 
-          status, 
-          mcp_message_id,
-          sent_at
-        ) VALUES (?, ?, ?, ?, ?, datetime('now'))
-      `, [
-        emailData.to[0].email,
-        emailData.from.email,
-        emailData.subject,
-        'sent',
-        result.message_id
-      ]);
-      
       return { success: true, messageId: result.message_id };
     } catch (error) {
       console.error('Email sending error:', error);
-      
-      // Log failed email
-      const db = await getDb();
-      await db.run(`
-        INSERT INTO email_logs (
-          recipient_email, 
-          sender_email, 
-          subject, 
-          status, 
-          error_message
-        ) VALUES (?, ?, ?, ?, ?)
-      `, [
-        emailData.to[0].email,
-        emailData.from.email,
-        emailData.subject,
-        'failed',
-        error instanceof Error ? error.message : 'Unknown error'
-      ]);
       
       return { 
         success: false, 
@@ -234,21 +202,21 @@ export async function sendOrderConfirmation(orderId: number): Promise<boolean> {
   `;
   
   const result = await mailService.sendEmail({
-    to: [{ email: order.supplier_email, name: order.supplier_name }],
-    from: { email: 'orders@ronisbakery.com', name: order.tenant_name },
+    to: order.supplier_email,
     subject: `New Purchase Order #${orderId} - ${order.tenant_name}`,
     html: emailContent,
-    text: emailContent.replace(/<[^>]*>/g, '') // Strip HTML for text version
+    text: emailContent.replace(/<[^>]*>/g, ''), // Strip HTML for text version
+    category: 'order_confirmation'
   });
   
   // Also send copy to the person who created the order
   if (order.ordered_by_email) {
     await mailService.sendEmail({
-      to: [{ email: order.ordered_by_email, name: order.ordered_by_name }],
-      from: { email: 'noreply@ronisbakery.com', name: 'Roni\'s Bakery System' },
+      to: order.ordered_by_email,
       subject: `Order Confirmation #${orderId} - Sent to ${order.supplier_name}`,
       html: `<p>Your order #${orderId} has been sent to ${order.supplier_name}.</p>${emailContent}`,
-      text: `Your order #${orderId} has been sent to ${order.supplier_name}.`
+      text: `Your order #${orderId} has been sent to ${order.supplier_name}.`,
+      category: 'order_confirmation'
     });
   }
   
@@ -318,14 +286,11 @@ export async function sendLowStockAlert(productId: number): Promise<boolean> {
   `;
   
   const result = await mailService.sendEmail({
-    to: [{ 
-      email: product.primary_contact_email || 'owner@ronisbakery.com', 
-      name: product.tenant_name 
-    }],
-    from: { email: 'alerts@ronisbakery.com', name: 'Inventory Management System' },
+    to: product.primary_contact_email || 'owner@ronisbakery.com',
     subject: `Low Stock Alert: ${product.name}`,
     html: emailContent,
-    text: emailContent.replace(/<[^>]*>/g, '')
+    text: emailContent.replace(/<[^>]*>/g, ''),
+    category: 'low_stock_alert'
   });
   
   return result.success;
@@ -397,14 +362,11 @@ export async function sendWeeklySummary(tenantId: number): Promise<boolean> {
   `;
   
   const result = await mailService.sendEmail({
-    to: [{ 
-      email: tenant.primary_contact_email, 
-      name: tenant.name 
-    }],
-    from: { email: 'reports@ronisbakery.com', name: 'Business Intelligence' },
+    to: tenant.primary_contact_email,
     subject: `Weekly Summary - ${tenant.name}`,
     html: emailContent,
-    text: emailContent.replace(/<[^>]*>/g, '')
+    text: emailContent.replace(/<[^>]*>/g, ''),
+    category: 'weekly_summary'
   });
   
   return result.success;

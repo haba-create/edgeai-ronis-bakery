@@ -58,7 +58,6 @@ export async function getSupplierPricesForProduct(
     JOIN suppliers s ON spp.supplier_id = s.id
     WHERE spp.product_id = ? 
       AND spp.quality_score >= ?
-      AND s.is_active = 1
     ORDER BY spp.price ASC
   `, [productId, minQualityScore]);
   
